@@ -6,9 +6,6 @@
     <title>DPMODS Edition Controller</title>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,800;1,900&family=JetBrains+Mono:wght@500;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Official Firebase SDK Fallback for WebSockets -->
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
     
     <!-- INSTANT NETLIFY BADGE KILLER -->
     <style>
@@ -106,8 +103,8 @@
 
         .login-error-box {
             display: none; background: rgba(255, 71, 87, 0.12); border: 1px solid rgba(255, 71, 87, 0.4);
-            color: #ff6b81; padding: 12px 14px; border-radius: 12px; font-size: 0.75rem; font-weight: 700;
-            text-align: left; margin-bottom: 14px; line-height: 1.45;
+            color: #ff6b81; padding: 12px 14px; border-radius: 12px; font-size: 0.74rem; font-weight: 700;
+            text-align: left; margin-bottom: 14px; line-height: 1.45; word-break: break-word;
         }
 
         .btn-primary { width: 100%; padding: 15px; border-radius: 14px; border: none; font-size: 0.92rem; font-weight: 900; cursor: pointer; transition: 0.2s; background: linear-gradient(90deg, var(--primary), var(--secondary)); color: #fff; box-shadow: var(--primary-glow); text-transform: uppercase; letter-spacing: 1px;}
@@ -174,7 +171,7 @@
         .btn-del-exp { color: var(--danger); border-color: rgba(255, 71, 87, 0.3); }
         .btn-unbind { color: var(--warning); border-color: rgba(255, 165, 2, 0.3); }
 
-        /* --- ACCORDION KEY CARDS (WITH VISIBLE HWID & REMAINING DAYS) --- */
+        /* --- ACCORDION KEY CARDS --- */
         .content-area { padding: 0 20px; display: flex; flex-direction: column; gap: 10px; }
         
         .acc-card { background: var(--bg-card); border-radius: 15px; border: 1px solid var(--border-light); overflow: hidden; transition: 0.25s ease; }
@@ -243,7 +240,7 @@
 
         .watermark { text-align: center; font-size: 0.65rem; font-weight: 800; color: rgba(255,255,255,0.2); letter-spacing: 2px; text-transform: uppercase; padding: 22px 0 10px; pointer-events: none; }
 
-        /* --- EXACT CIRCULAR NEON LIVE PREVIEW (MATCHES SCREENSHOT) --- */
+        /* --- EXACT CIRCULAR NEON LIVE PREVIEW --- */
         #pv-container { display: flex; justify-content: center; align-items: center; padding: 10px 0 20px; }
         .circle-outer-ring {
             width: 345px; height: 345px; border-radius: 50%;
@@ -380,6 +377,9 @@
                 </div>
                 <div id="login-error-box" class="login-error-box"></div>
                 <button id="login-btn" class="btn-primary" onclick="login()" style="margin-top: 4px;">CONNECT SHIELD</button>
+                <button id="offline-fallback-btn" onclick="openWithDefaultTemplate()" style="display:none; width:100%; margin-top:10px; padding:12px; border-radius:12px; background:rgba(0,229,255,0.08); border:1px dashed var(--border-cyan); color:var(--cyan); font-weight:800; font-size:0.75rem; cursor:pointer; text-transform:uppercase;">
+                    <i class="fas fa-bolt"></i> Open Panel with Default JSON Template
+                </button>
             </div>
             
             <div id="saved-connections" style="width: 100%; text-align: start; display: none;">
@@ -507,7 +507,7 @@
                     <i class="fas fa-circle-notch"></i> Live Circular Shield Preview (Tap Text to Edit)
                 </h3>
                 
-                <!-- EXACT CIRCULAR NEON DIALOG PREVIEW (MATCHES SCREENSHOT) -->
+                <!-- EXACT CIRCULAR NEON DIALOG PREVIEW -->
                 <div id="pv-container">
                     <div class="circle-outer-ring" id="pv-outer-ring">
                         <div class="circle-neon-border" id="pv-circle-card">
@@ -897,12 +897,59 @@
         function getStorage(key, fallback = null) { try { return localStorage.getItem(key) || fallback; } catch (e) { return fallback; } }
         function setStorage(key, val) { try { localStorage.setItem(key, val); } catch (e) {} }
 
+        const DEFAULT_TEMPLATE_DB = {
+            config: {
+                banned_devices: { "demo_blacklisted_hwid_999": "Banned for attempting unauthorized bypass." },
+                bg_check_interval_sec: 10,
+                check_interval_sec: 5,
+                default_ban_message: "Your device HWID has been permanently blacklisted for security violations.",
+                dialog_ui: {
+                    brand_badge: "EDITION",
+                    brand_title: "DPMODS",
+                    get_key_text: "GET KEY / SUPPORT →",
+                    get_key_url: "https://t.me/dpmods",
+                    key_hint: "Enter or Paste License Key",
+                    status_pill: "● LIVE CLOUD SHIELD",
+                    subtitle: "Background & Foreground Protected",
+                    verify_btn_text: "UNLOCK APPLICATION"
+                },
+                kill_in_background: true,
+                maintenance: {
+                    message: "We are upgrading our cloud security nodes. Service will resume shortly.",
+                    status: false,
+                    title: "SERVER MAINTENANCE"
+                },
+                show_dialog: true,
+                ui_theme: {
+                    card_bg_color: "#12151C",
+                    input_bg_color: "#191D26",
+                    primary_color: "#E23744",
+                    secondary_color: "#FF7E8B"
+                },
+                update: {
+                    btn_text: "DOWNLOAD UPDATE",
+                    message: "A mandatory new update has been released. Download now to continue.",
+                    status: false,
+                    title: "CRITICAL UPDATE",
+                    url: "https://t.me/dpmods"
+                }
+            },
+            keys: {
+                "ZOMATO-1DAY-TRIAL": {
+                    devices: { "87d7ea7faf897f9f": true },
+                    duration_days: 1,
+                    expiry_time: 1794758297,
+                    is_blocked: false,
+                    max_devices: 1
+                },
+                "ZOMATO-30DAYS-PRO": { duration_days: 30, expiry_time: 0, is_blocked: false, max_devices: 2 },
+                "ZOMATO-7DAYS-VIP": { duration_days: 7, expiry_time: 0, is_blocked: false, max_devices: 1 },
+                "ZOMATO-TEAM-5DEV": { duration_days: 30, expiry_time: 0, is_blocked: false, max_devices: 5 }
+            }
+        };
+
         let DB_URL = "";
         let DB_SECRET = "";
-        let USING_SDK_WS = false;
-        let fbApp = null;
-        let fbDb = null;
-
         let DB = { config: {}, keys: {} }; 
         let lastSyncedKeysHash = "";
         let currentFilter = 'all';
@@ -924,33 +971,42 @@
             renderSavedUrls();
         };
 
-        /* --- SMART FIREBASE URL NORMALIZER --- */
-        function normalizeFirebaseUrl(rawInput) {
+        /* --- CLEAN & SAFE URL SANITIZER (DOES NOT STRIP VALID REGIONS OR PATHS) --- */
+        function cleanDatabaseUrl(rawInput) {
             if (!rawInput) return "";
-            let s = rawInput.trim().replace(/['"\s]/g, '');
+            let url = rawInput.trim().replace(/['"\s]/g, '');
 
-            const consoleMatch = s.match(/\/database\/([a-zA-Z0-9-]+)\/data/i);
+            // Handle Firebase Console links if pasted
+            const consoleMatch = url.match(/\/database\/([a-zA-Z0-9-]+)\/data/i);
             if (consoleMatch && consoleMatch[1]) {
                 return `https://${consoleMatch[1]}.firebaseio.com`;
             }
 
-            if (!/^https?:\/\//i.test(s)) {
-                s = 'https://' + s;
+            if (!/^https?:\/\//i.test(url)) {
+                url = 'https://' + url;
             }
-            s = s.replace(/^http:\/\//i, 'https://');
+            url = url.replace(/^http:\/\//i, 'https://');
 
-            try {
-                const u = new URL(s);
-                let host = u.hostname;
-                if (!host.includes('.')) {
-                    host = `${host}.firebaseio.com`;
-                } else if (host.endsWith('.fire') || host.endsWith('.fireb') || host.endsWith('.firebase') || host.endsWith('.firebaseio')) {
-                    host = host.split('.')[0] + '.firebaseio.com';
+            // Remove query params if user pasted ?auth=... inside the URL box
+            if (url.includes('?')) {
+                const [basePart, queryPart] = url.split('?');
+                url = basePart;
+                const params = new URLSearchParams(queryPart);
+                if (params.get('auth') && !document.getElementById('auth-secret').value.trim()) {
+                    document.getElementById('auth-secret').value = params.get('auth');
                 }
-                return `https://${host}`;
-            } catch (e) {
-                return s.replace(/\/+$/, '').replace(/\/\.json$/i, '').replace(/\.json$/i, '');
             }
+
+            // Strip trailing /.json or .json and trailing slashes
+            url = url.replace(/\/\.json$/i, '').replace(/\.json$/i, '').replace(/\/+$/, '');
+
+            // If user typed just project ID without domain (e.g. https://vinaykumarzomato-default-rtdb)
+            const hostPart = url.replace('https://', '').split('/')[0];
+            if (!hostPart.includes('.')) {
+                url = `https://${hostPart}.firebaseio.com`;
+            }
+
+            return url;
         }
 
         function buildFirebaseUrl(nodePath = "", includeAuth = true) {
@@ -960,47 +1016,93 @@
             return `${DB_URL}${cleanPath}.json${authQuery}`;
         }
 
-        /* --- MULTI-ENGINE FIREBASE CONNECTOR --- */
-        async function fetchRootFromFirebase() {
-            try {
-                const res = await fetch(buildFirebaseUrl("", true), { method: 'GET', cache: 'no-store' });
-                if (res.status === 401 || res.status === 403) {
-                    const pubRes = await fetch(buildFirebaseUrl("", false), { method: 'GET', cache: 'no-store' });
-                    if (pubRes.ok) {
-                        DB_SECRET = "";
-                        USING_SDK_WS = false;
-                        return await pubRes.json();
+        /* --- JSONP FALLBACK (BYPASSES BROWSER CORS / FAILED TO FETCH COMPLETELY) --- */
+        function fetchViaJsonp(urlStr) {
+            return new Promise((resolve, reject) => {
+                const cbName = "dp_jsonp_" + Math.floor(Math.random() * 1000000);
+                const script = document.createElement('script');
+                const sep = urlStr.includes('?') ? '&' : '?';
+                
+                const timer = setTimeout(() => {
+                    cleanup();
+                    reject(new Error("JSONP Timeout"));
+                }, 8000);
+
+                function cleanup() {
+                    clearTimeout(timer);
+                    delete window[cbName];
+                    if (script.parentNode) script.parentNode.removeChild(script);
+                }
+
+                window[cbName] = (data) => {
+                    cleanup();
+                    if (data && data.error) {
+                        reject(new Error(data.error));
+                    } else {
+                        resolve(data);
                     }
-                    const errJson = await res.json().catch(() => ({}));
-                    throw new Error(errJson.error || "Permission Denied (401): Invalid Database Secret Token");
+                };
+
+                script.onerror = () => {
+                    cleanup();
+                    reject(new Error("Host unreachable. Check that the Firebase URL is spelled correctly."));
+                };
+
+                script.src = `${urlStr}${sep}callback=${cbName}`;
+                document.body.appendChild(script);
+            });
+        }
+
+        /* --- TRIPLE-FALLBACK FETCH ENGINE (PLAIN FETCH -> PUBLIC RETRY -> JSONP) --- */
+        async function fetchRootFromFirebase() {
+            // 1. Exact Plain Fetch (Same as your working panels - NO custom options that trigger preflight)
+            try {
+                const res = await fetch(buildFirebaseUrl("", true));
+                if (res.status === 401 || res.status === 403) {
+                    // Try without secret token in case DB is public and token was wrong
+                    if (DB_SECRET) {
+                        const pubRes = await fetch(buildFirebaseUrl("", false));
+                        if (pubRes.ok) {
+                            DB_SECRET = "";
+                            document.getElementById('auth-secret').value = "";
+                            return await pubRes.json();
+                        }
+                    }
+                    const errObj = await res.json().catch(() => ({}));
+                    throw new Error(errObj.error || "Permission Denied (401): Invalid Secret Token.");
                 }
                 if (res.ok) {
-                    USING_SDK_WS = false;
                     return await res.json();
                 }
-            } catch (restErr) {
-                if (restErr.message && restErr.message.includes("Permission Denied")) {
-                    throw restErr;
+                throw new Error(`HTTP ${res.status}`);
+            } catch (err) {
+                if (err.message && err.message.includes("Permission Denied")) {
+                    throw err;
                 }
-                if (window.firebase && window.firebase.database) {
+                // 2. Try without token via plain fetch
+                if (DB_SECRET) {
                     try {
-                        if (!fbApp) {
-                            fbApp = firebase.initializeApp({ databaseURL: DB_URL }, "dpshield_" + Date.now());
-                            fbDb = firebase.database(fbApp);
+                        const resNoAuth = await fetch(buildFirebaseUrl("", false));
+                        if (resNoAuth.ok) {
+                            DB_SECRET = "";
+                            return await resNoAuth.json();
                         }
-                        const snap = await Promise.race([
-                            fbDb.ref('/').once('value'),
-                            new Promise((_, rej) => setTimeout(() => rej(new Error("WebSocket Timeout")), 8000))
-                        ]);
-                        USING_SDK_WS = true;
-                        return snap.val();
-                    } catch (sdkErr) {
-                        throw new Error(`Connection Failed (${restErr.message}). Check your Database URL & Internet.`);
-                    }
+                    } catch (e2) {}
                 }
-                throw restErr;
+                // 3. Try JSONP (Bypasses CORS redirects across regions)
+                try {
+                    return await fetchViaJsonp(buildFirebaseUrl("", true));
+                } catch (jsonpErr) {
+                    if (DB_SECRET) {
+                        try {
+                            const dataPub = await fetchViaJsonp(buildFirebaseUrl("", false));
+                            DB_SECRET = "";
+                            return dataPub;
+                        } catch (e3) {}
+                    }
+                    throw jsonpErr;
+                }
             }
-            throw new Error("Could not connect to Firebase URL.");
         }
 
         /* --- CUSTOM CONFIRMATION MODAL --- */
@@ -1068,9 +1170,39 @@
             });
         }
 
+        function openWithDefaultTemplate() {
+            DB = JSON.parse(JSON.stringify(DEFAULT_TEMPLATE_DB));
+            lastSyncedKeysHash = JSON.stringify(DB.keys);
+            document.getElementById('conn-mode-txt').innerText = "LOCAL MODE";
+            openDashboardScreen();
+            showIsland("Loaded Default Template!", "success", "fa-bolt");
+        }
+
+        function openDashboardScreen() {
+            const loginScreen = document.getElementById('login-screen');
+            loginScreen.style.opacity = '0';
+            loginScreen.style.pointerEvents = 'none';
+            
+            setTimeout(() => {
+                loginScreen.style.display = 'none';
+                document.getElementById('main-app').style.display = 'flex'; 
+                document.getElementById('bottom-nav').style.display = 'flex';
+                
+                loadConfig(); 
+                
+                currentFilter = 'all';
+                visibleKeysCount = PAGE_CHUNK;
+                document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+                document.getElementById('chip-all').classList.add('active'); 
+                
+                renderAll();
+            }, 250);
+        }
+
         async function login() {
             const btn = document.getElementById('login-btn');
             const errBox = document.getElementById('login-error-box');
+            const fallbackBtn = document.getElementById('offline-fallback-btn');
             errBox.style.display = 'none';
 
             let rawUrl = document.getElementById('auth-url').value.trim();
@@ -1081,18 +1213,24 @@
                 return;
             }
 
-            DB_URL = normalizeFirebaseUrl(rawUrl);
+            DB_URL = cleanDatabaseUrl(rawUrl);
             document.getElementById('auth-url').value = DB_URL;
             DB_SECRET = secret;
 
             btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> CONNECTING...`;
 
             try {
-                const data = await fetchRootFromFirebase() || {};
-                DB = {
-                    config: data.config || {},
-                    keys: data.keys || {}
-                };
+                const data = await fetchRootFromFirebase();
+                if (data && typeof data === 'object') {
+                    DB = {
+                        config: data.config || DEFAULT_TEMPLATE_DB.config,
+                        keys: data.keys || {}
+                    };
+                } else {
+                    // Database is empty (null) -> Initialize with default template!
+                    DB = JSON.parse(JSON.stringify(DEFAULT_TEMPLATE_DB));
+                    await syncNode("", DB);
+                }
                 lastSyncedKeysHash = JSON.stringify(DB.keys);
 
                 setStorage('dp_shield_url', DB_URL);
@@ -1105,27 +1243,9 @@
                 if (savedConns.length > 5) savedConns.pop(); 
                 setStorage('dp_shield_conns', JSON.stringify(savedConns));
                 
-                document.getElementById('conn-mode-txt').innerText = USING_SDK_WS ? "WS SHIELD" : "CLOUD SHIELD";
-
-                const loginScreen = document.getElementById('login-screen');
-                loginScreen.style.opacity = '0';
-                loginScreen.style.pointerEvents = 'none';
-                
-                setTimeout(() => {
-                    loginScreen.style.display = 'none';
-                    document.getElementById('main-app').style.display = 'flex'; 
-                    document.getElementById('bottom-nav').style.display = 'flex';
-                    
-                    loadConfig(); 
-                    
-                    currentFilter = 'all';
-                    visibleKeysCount = PAGE_CHUNK;
-                    document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
-                    document.getElementById('chip-all').classList.add('active'); 
-                    
-                    renderAll();
-                    showIsland("Connected to DPMODS Shield!", "success", "fa-shield-halved");
-                }, 280);
+                document.getElementById('conn-mode-txt').innerText = "CLOUD SHIELD";
+                openDashboardScreen();
+                showIsland("Connected to DPMODS Shield!", "success", "fa-shield-halved");
 
                 if (window.syncInterval) clearInterval(window.syncInterval);
                 window.syncInterval = setInterval(silentBackgroundSync, 10000);
@@ -1133,7 +1253,8 @@
             } catch (e) {
                 btn.innerHTML = "CONNECT SHIELD";
                 errBox.style.display = 'block';
-                errBox.innerHTML = `<i class="fas fa-exclamation-circle"></i> <b>Connection Failed:</b> ${e.message}<br><small style="color:var(--text-muted);">Verify that your URL ends with <b>.firebaseio.com</b> or <b>.firebasedatabase.app</b> and your Secret Token is valid.</small>`;
+                fallbackBtn.style.display = 'block';
+                errBox.innerHTML = `<i class="fas fa-exclamation-circle"></i> <b>Unable to reach:</b> <code>${DB_URL}</code><br><span style="color:#ffd1d6;">Reason: ${e.message}</span><br><small style="color:var(--text-muted); display:block; margin-top:4px;">• Copy the exact URL from the top of your Firebase Realtime Database data tab (e.g. <b>https://project-default-rtdb.firebaseio.com</b> or <b>.asia-southeast1.firebasedatabase.app</b>).<br>• Or try leaving the Secret Token box empty if your database rules are public.</small>`;
                 showIsland("Connection Failed!", "error");
             }
         }
@@ -1144,7 +1265,7 @@
             try {
                 const data = await fetchRootFromFirebase() || {};
                 DB = {
-                    config: data.config || {},
+                    config: data.config || DEFAULT_TEMPLATE_DB.config,
                     keys: data.keys || {}
                 };
                 lastSyncedKeysHash = JSON.stringify(DB.keys);
@@ -1158,19 +1279,9 @@
         }
 
         async function silentBackgroundSync() {
+            if (!DB_URL) return;
             try {
-                if (USING_SDK_WS && fbDb) {
-                    const snap = await fbDb.ref('keys').once('value');
-                    const keysData = snap.val() || {};
-                    const newHash = JSON.stringify(keysData);
-                    if (newHash !== lastSyncedKeysHash) {
-                        DB.keys = keysData;
-                        lastSyncedKeysHash = newHash;
-                        renderAll();
-                    }
-                    return;
-                }
-                const res = await fetch(buildFirebaseUrl("keys"), { cache: 'no-store' });
+                const res = await fetch(buildFirebaseUrl("keys"));
                 if (res.ok) {
                     const keysData = await res.json() || {};
                     const newHash = JSON.stringify(keysData);
@@ -1185,15 +1296,8 @@
 
         /* --- BULLETPROOF WRITE / DELETE ENGINE --- */
         async function syncNode(nodePath, dataObj) {
+            if (!DB_URL) return true;
             const cleanPath = nodePath.replace(/^\/+/, '');
-            if (USING_SDK_WS && fbDb) {
-                try {
-                    if (dataObj === null) await fbDb.ref(cleanPath).remove();
-                    else await fbDb.ref(cleanPath).set(dataObj);
-                    return true;
-                } catch (e) {}
-            }
-
             try {
                 const method = dataObj === null ? 'DELETE' : 'PUT';
                 const options = { method };
@@ -1218,13 +1322,8 @@
         }
 
         async function patchNode(nodePath, patchObj) {
+            if (!DB_URL) return true;
             const cleanPath = nodePath.replace(/^\/+/, '');
-            if (USING_SDK_WS && fbDb) {
-                try {
-                    await fbDb.ref(cleanPath).update(patchObj);
-                    return true;
-                } catch (e) {}
-            }
             try {
                 const res = await fetch(buildFirebaseUrl(cleanPath), {
                     method: 'PATCH',
@@ -1356,7 +1455,6 @@
                 return { id: 'blocked', class: 'blocked', text: 'BLOCKED', color: 'var(--danger)', timeInfo };
             }
 
-            // Also check if any bound HWID is in config.banned_devices
             if (devEntries.length > 0 && DB.config && DB.config.banned_devices) {
                 const bannedMap = DB.config.banned_devices;
                 if (devEntries.some(([hwid]) => bannedMap[hwid])) {
@@ -1910,7 +2008,6 @@
                 const encKey = encodeURIComponent(keyId);
                 const tInfo = statusObj.timeInfo;
                 
-                // Show bound HWID chip directly on card header so user can see Device ID immediately
                 let firstHwidChip = "";
                 if (devCount > 0) {
                     const firstHwid = devEntries[0][0];
