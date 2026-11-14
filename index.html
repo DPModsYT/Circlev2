@@ -101,10 +101,13 @@
         .input-row { display: flex; gap: 10px; }
         .input-row .input-group { flex: 1; margin-bottom: 10px; }
 
-        .login-error-box {
-            display: none; background: rgba(255, 71, 87, 0.12); border: 1px solid rgba(255, 71, 87, 0.4);
-            color: #ff6b81; padding: 12px 14px; border-radius: 12px; font-size: 0.74rem; font-weight: 700;
+        .login-status-box {
+            display: none; background: rgba(0, 229, 255, 0.08); border: 1px solid rgba(0, 229, 255, 0.3);
+            color: var(--cyan); padding: 11px 14px; border-radius: 12px; font-size: 0.74rem; font-weight: 700;
             text-align: left; margin-bottom: 14px; line-height: 1.45; word-break: break-word;
+        }
+        .login-status-box.error {
+            background: rgba(255, 71, 87, 0.12); border-color: rgba(255, 71, 87, 0.4); color: #ff6b81;
         }
 
         .btn-primary { width: 100%; padding: 15px; border-radius: 14px; border: none; font-size: 0.92rem; font-weight: 900; cursor: pointer; transition: 0.2s; background: linear-gradient(90deg, var(--primary), var(--secondary)); color: #fff; box-shadow: var(--primary-glow); text-transform: uppercase; letter-spacing: 1px;}
@@ -368,18 +371,15 @@
             
             <div class="login-card">
                 <div class="input-group">
-                    <label>Firebase Database URL</label>
+                    <label>Firebase Database URL or Project ID</label>
                     <input type="text" id="auth-url" placeholder="https://your-db-default-rtdb.firebaseio.com" autocomplete="off" spellcheck="false">
                 </div>
                 <div class="input-group">
                     <label>Database Secret / Token (Optional if Public)</label>
                     <input type="password" id="auth-secret" placeholder="Leave blank if rules are public (true)" autocomplete="off">
                 </div>
-                <div id="login-error-box" class="login-error-box"></div>
+                <div id="login-status-box" class="login-status-box"></div>
                 <button id="login-btn" class="btn-primary" onclick="login()" style="margin-top: 4px;">CONNECT SHIELD</button>
-                <button id="offline-fallback-btn" onclick="openWithDefaultTemplate()" style="display:none; width:100%; margin-top:10px; padding:12px; border-radius:12px; background:rgba(0,229,255,0.08); border:1px dashed var(--border-cyan); color:var(--cyan); font-weight:800; font-size:0.75rem; cursor:pointer; text-transform:uppercase;">
-                    <i class="fas fa-bolt"></i> Open Panel with Default JSON Template
-                </button>
             </div>
             
             <div id="saved-connections" style="width: 100%; text-align: start; display: none;">
@@ -405,7 +405,7 @@
             </div>
             <div class="header-sub">
                 <div class="sync-text">
-                    <span>LIVE DATABASE SYNC</span>
+                    <span id="active-region-lbl">LIVE DATABASE SYNC</span>
                     <i class="fas fa-sync-alt" id="reload-icon" style="cursor:pointer; color:#fff; font-size:0.8rem;" onclick="fetchDatabase()" title="Refresh"></i>
                 </div>
                 <div class="disconnect-btn" onclick="logout()"><i class="fas fa-power-off"></i> DISCONNECT</div>
@@ -950,6 +950,7 @@
 
         let DB_URL = "";
         let DB_SECRET = "";
+        let USING_CORS_PROXY = false;
         let DB = { config: {}, keys: {} }; 
         let lastSyncedKeysHash = "";
         let currentFilter = 'all';
@@ -971,62 +972,70 @@
             renderSavedUrls();
         };
 
-        /* --- CLEAN & SAFE URL SANITIZER (DOES NOT STRIP VALID REGIONS OR PATHS) --- */
-        function cleanDatabaseUrl(rawInput) {
-            if (!rawInput) return "";
-            let url = rawInput.trim().replace(/['"\s]/g, '');
+        /* --- AUTO-REGION CANDIDATE GENERATOR (SOLVES ASIA-SOUTHEAST1 / EUROPE-WEST1 REDIRECT BLOCK) --- */
+        function getRegionCandidateUrls(rawInput) {
+            if (!rawInput) return [];
+            let s = rawInput.trim().replace(/['"\s]/g, '');
 
-            // Handle Firebase Console links if pasted
-            const consoleMatch = url.match(/\/database\/([a-zA-Z0-9-]+)\/data/i);
+            // Extract from Firebase Console link if pasted
+            const consoleMatch = s.match(/\/database\/([a-zA-Z0-9-]+)\/data/i);
             if (consoleMatch && consoleMatch[1]) {
-                return `https://${consoleMatch[1]}.firebaseio.com`;
+                s = consoleMatch[1];
             }
 
-            if (!/^https?:\/\//i.test(url)) {
-                url = 'https://' + url;
-            }
-            url = url.replace(/^http:\/\//i, 'https://');
+            // Strip query params and trailing .json / slashes
+            s = s.split('?')[0].replace(/\/\.json$/i, '').replace(/\.json$/i, '').replace(/\/+$/, '');
+            s = s.replace(/^https?:\/\//i, '');
 
-            // Remove query params if user pasted ?auth=... inside the URL box
-            if (url.includes('?')) {
-                const [basePart, queryPart] = url.split('?');
-                url = basePart;
-                const params = new URLSearchParams(queryPart);
-                if (params.get('auth') && !document.getElementById('auth-secret').value.trim()) {
-                    document.getElementById('auth-secret').value = params.get('auth');
-                }
-            }
+            // Extract database instance name (e.g. "vinaykumarzomato-9f5ae-default-rtdb")
+            const host = s.split('/')[0];
+            const subPath = s.includes('/') ? '/' + s.split('/').slice(1).join('/') : '';
+            const dbName = host.split('.')[0];
 
-            // Strip trailing /.json or .json and trailing slashes
-            url = url.replace(/\/\.json$/i, '').replace(/\.json$/i, '').replace(/\/+$/, '');
+            const candidates = [];
+            const addUnique = (u) => { if (!candidates.includes(u)) candidates.push(u); };
 
-            // If user typed just project ID without domain (e.g. https://vinaykumarzomato-default-rtdb)
-            const hostPart = url.replace('https://', '').split('/')[0];
-            if (!hostPart.includes('.')) {
-                url = `https://${hostPart}.firebaseio.com`;
+            // 1. Exact host if user already provided a full domain
+            if (host.includes('.')) {
+                addUnique(`https://${host}${subPath}`);
             }
 
-            return url;
+            // 2. All 3 Official Firebase Realtime Database Regional Domains
+            addUnique(`https://${dbName}.firebaseio.com${subPath}`);
+            addUnique(`https://${dbName}.asia-southeast1.firebasedatabase.app${subPath}`);
+            addUnique(`https://${dbName}.europe-west1.firebasedatabase.app${subPath}`);
+
+            // 3. Also try with/without '-default-rtdb' suffix in case user omitted it
+            if (!dbName.endsWith('-default-rtdb')) {
+                addUnique(`https://${dbName}-default-rtdb.firebaseio.com${subPath}`);
+                addUnique(`https://${dbName}-default-rtdb.asia-southeast1.firebasedatabase.app${subPath}`);
+                addUnique(`https://${dbName}-default-rtdb.europe-west1.firebasedatabase.app${subPath}`);
+            }
+
+            return candidates;
         }
 
-        function buildFirebaseUrl(nodePath = "", includeAuth = true) {
+        function buildTargetUrl(baseUrl, nodePath = "", secret = "") {
             const cleanPath = nodePath ? `/${nodePath.replace(/^\/+/, '')}` : '';
-            const hasAuth = includeAuth && DB_SECRET && DB_SECRET.length > 0;
-            const authQuery = hasAuth ? `?auth=${encodeURIComponent(DB_SECRET)}` : '';
-            return `${DB_URL}${cleanPath}.json${authQuery}`;
+            const authQuery = secret ? `?auth=${encodeURIComponent(secret)}` : '';
+            return `${baseUrl}${cleanPath}.json${authQuery}`;
         }
 
-        /* --- JSONP FALLBACK (BYPASSES BROWSER CORS / FAILED TO FETCH COMPLETELY) --- */
-        function fetchViaJsonp(urlStr) {
+        function buildFirebaseUrl(nodePath = "") {
+            return buildTargetUrl(DB_URL, nodePath, DB_SECRET);
+        }
+
+        /* --- JSONP FALLBACK --- */
+        function probeViaJsonp(targetJsonUrl, timeoutMs = 4500) {
             return new Promise((resolve, reject) => {
-                const cbName = "dp_jsonp_" + Math.floor(Math.random() * 1000000);
+                const cbName = "dp_cb_" + Math.floor(Math.random() * 10000000);
                 const script = document.createElement('script');
-                const sep = urlStr.includes('?') ? '&' : '?';
+                const sep = targetJsonUrl.includes('?') ? '&' : '?';
                 
                 const timer = setTimeout(() => {
                     cleanup();
-                    reject(new Error("JSONP Timeout"));
-                }, 8000);
+                    reject(new Error("Timeout"));
+                }, timeoutMs);
 
                 function cleanup() {
                     clearTimeout(timer);
@@ -1036,7 +1045,7 @@
 
                 window[cbName] = (data) => {
                     cleanup();
-                    if (data && data.error) {
+                    if (data && typeof data === 'object' && data.error) {
                         reject(new Error(data.error));
                     } else {
                         resolve(data);
@@ -1045,64 +1054,78 @@
 
                 script.onerror = () => {
                     cleanup();
-                    reject(new Error("Host unreachable. Check that the Firebase URL is spelled correctly."));
+                    reject(new Error("Unreachable"));
                 };
 
-                script.src = `${urlStr}${sep}callback=${cbName}`;
+                script.src = `${targetJsonUrl}${sep}callback=${cbName}`;
                 document.body.appendChild(script);
             });
         }
 
-        /* --- TRIPLE-FALLBACK FETCH ENGINE (PLAIN FETCH -> PUBLIC RETRY -> JSONP) --- */
-        async function fetchRootFromFirebase() {
-            // 1. Exact Plain Fetch (Same as your working panels - NO custom options that trigger preflight)
-            try {
-                const res = await fetch(buildFirebaseUrl("", true));
-                if (res.status === 401 || res.status === 403) {
-                    // Try without secret token in case DB is public and token was wrong
-                    if (DB_SECRET) {
-                        const pubRes = await fetch(buildFirebaseUrl("", false));
-                        if (pubRes.ok) {
-                            DB_SECRET = "";
-                            document.getElementById('auth-secret').value = "";
-                            return await pubRes.json();
-                        }
-                    }
-                    const errObj = await res.json().catch(() => ({}));
-                    throw new Error(errObj.error || "Permission Denied (401): Invalid Secret Token.");
-                }
-                if (res.ok) {
-                    return await res.json();
-                }
-                throw new Error(`HTTP ${res.status}`);
-            } catch (err) {
-                if (err.message && err.message.includes("Permission Denied")) {
-                    throw err;
-                }
-                // 2. Try without token via plain fetch
-                if (DB_SECRET) {
+        /* --- SMART MULTI-REGION & MULTI-TOKEN AUTO-DISCOVERY ENGINE --- */
+        async function discoverAndConnectFirebase(rawUrlInput, rawSecretInput) {
+            const statusBox = document.getElementById('login-status-box');
+            const candidates = getRegionCandidateUrls(rawUrlInput);
+            const tokensToTry = rawSecretInput ? [rawSecretInput, ""] : [""];
+            let lastAuthError = null;
+
+            // Phase 1: Try Direct Fetch across all regional URLs (US, Asia-Southeast1, Europe-West1)
+            for (const candidateUrl of candidates) {
+                const shortHost = candidateUrl.replace('https://', '');
+                statusBox.className = "login-status-box";
+                statusBox.style.display = "block";
+                statusBox.innerHTML = `<i class="fas fa-satellite-dish fa-spin"></i> Checking region: <b>${shortHost}</b>...`;
+
+                for (const token of tokensToTry) {
+                    const testEndpoint = buildTargetUrl(candidateUrl, "", token);
                     try {
-                        const resNoAuth = await fetch(buildFirebaseUrl("", false));
-                        if (resNoAuth.ok) {
-                            DB_SECRET = "";
-                            return await resNoAuth.json();
+                        const res = await fetch(testEndpoint);
+                        if (res.ok) {
+                            const data = await res.json();
+                            USING_CORS_PROXY = false;
+                            return { resolvedUrl: candidateUrl, resolvedSecret: token, data };
                         }
-                    } catch (e2) {}
-                }
-                // 3. Try JSONP (Bypasses CORS redirects across regions)
-                try {
-                    return await fetchViaJsonp(buildFirebaseUrl("", true));
-                } catch (jsonpErr) {
-                    if (DB_SECRET) {
+                        if (res.status === 401 || res.status === 403) {
+                            const errData = await res.json().catch(() => ({}));
+                            lastAuthError = { url: candidateUrl, msg: errData.error || "Permission Denied (Invalid Token)" };
+                        }
+                    } catch (fetchErr) {
+                        // Fetch failed (could be region redirect or CORS) -> Try JSONP on this candidate immediately
                         try {
-                            const dataPub = await fetchViaJsonp(buildFirebaseUrl("", false));
-                            DB_SECRET = "";
-                            return dataPub;
-                        } catch (e3) {}
+                            const jsonpData = await probeViaJsonp(testEndpoint, 3500);
+                            USING_CORS_PROXY = false;
+                            return { resolvedUrl: candidateUrl, resolvedSecret: token, data: jsonpData };
+                        } catch (jsonpErr) {
+                            if (jsonpErr.message && jsonpErr.message.toLowerCase().includes("permission")) {
+                                lastAuthError = { url: candidateUrl, msg: jsonpErr.message };
+                            }
+                        }
                     }
-                    throw jsonpErr;
                 }
             }
+
+            // Phase 2: If direct & JSONP failed due to strict browser/ISP block, try CORS Proxy on candidates
+            for (const candidateUrl of candidates.slice(0, 3)) {
+                for (const token of tokensToTry) {
+                    const testEndpoint = buildTargetUrl(candidateUrl, "", token);
+                    try {
+                        const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(testEndpoint)}`;
+                        const res = await fetch(proxyUrl);
+                        if (res.ok) {
+                            const data = await res.json();
+                            if (!data || !data.error) {
+                                USING_CORS_PROXY = true;
+                                return { resolvedUrl: candidateUrl, resolvedSecret: token, data };
+                            }
+                        }
+                    } catch (e) {}
+                }
+            }
+
+            if (lastAuthError) {
+                throw new Error(`Found database at ${lastAuthError.url.replace('https://', '')}, but access was denied (${lastAuthError.msg}). Please check your Database Secret Token or set Firebase Rules to true.`);
+            }
+            throw new Error(`Could not find an active Realtime Database for "${candidates[0].replace('https://', '')}" in US, Asia (Singapore), or Europe regions. Verify the exact URL in your Firebase Console.`);
         }
 
         /* --- CUSTOM CONFIRMATION MODAL --- */
@@ -1170,14 +1193,6 @@
             });
         }
 
-        function openWithDefaultTemplate() {
-            DB = JSON.parse(JSON.stringify(DEFAULT_TEMPLATE_DB));
-            lastSyncedKeysHash = JSON.stringify(DB.keys);
-            document.getElementById('conn-mode-txt').innerText = "LOCAL MODE";
-            openDashboardScreen();
-            showIsland("Loaded Default Template!", "success", "fa-bolt");
-        }
-
         function openDashboardScreen() {
             const loginScreen = document.getElementById('login-screen');
             loginScreen.style.opacity = '0';
@@ -1201,9 +1216,8 @@
 
         async function login() {
             const btn = document.getElementById('login-btn');
-            const errBox = document.getElementById('login-error-box');
-            const fallbackBtn = document.getElementById('offline-fallback-btn');
-            errBox.style.display = 'none';
+            const statusBox = document.getElementById('login-status-box');
+            statusBox.style.display = 'none';
 
             let rawUrl = document.getElementById('auth-url').value.trim();
             const secret = document.getElementById('auth-secret').value.trim();
@@ -1213,21 +1227,22 @@
                 return;
             }
 
-            DB_URL = cleanDatabaseUrl(rawUrl);
-            document.getElementById('auth-url').value = DB_URL;
-            DB_SECRET = secret;
-
-            btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> CONNECTING...`;
+            btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> AUTO-DETECTING REGION...`;
 
             try {
-                const data = await fetchRootFromFirebase();
+                const { resolvedUrl, resolvedSecret, data } = await discoverAndConnectFirebase(rawUrl, secret);
+                
+                DB_URL = resolvedUrl;
+                DB_SECRET = resolvedSecret;
+                document.getElementById('auth-url').value = DB_URL;
+
                 if (data && typeof data === 'object') {
                     DB = {
                         config: data.config || DEFAULT_TEMPLATE_DB.config,
                         keys: data.keys || {}
                     };
                 } else {
-                    // Database is empty (null) -> Initialize with default template!
+                    // Database is empty (null) -> Initialize with your JSON structure!
                     DB = JSON.parse(JSON.stringify(DEFAULT_TEMPLATE_DB));
                     await syncNode("", DB);
                 }
@@ -1243,18 +1258,21 @@
                 if (savedConns.length > 5) savedConns.pop(); 
                 setStorage('dp_shield_conns', JSON.stringify(savedConns));
                 
-                document.getElementById('conn-mode-txt').innerText = "CLOUD SHIELD";
+                const regionTag = DB_URL.includes('asia-southeast1') ? 'ASIA-SE1 SYNC' : (DB_URL.includes('europe-west1') ? 'EU-WEST1 SYNC' : 'US-CENTRAL SYNC');
+                document.getElementById('active-region-lbl').innerText = regionTag;
+
+                statusBox.style.display = 'none';
                 openDashboardScreen();
-                showIsland("Connected to DPMODS Shield!", "success", "fa-shield-halved");
+                showIsland("Connected to " + regionTag, "success", "fa-shield-halved");
 
                 if (window.syncInterval) clearInterval(window.syncInterval);
                 window.syncInterval = setInterval(silentBackgroundSync, 10000);
 
             } catch (e) {
                 btn.innerHTML = "CONNECT SHIELD";
-                errBox.style.display = 'block';
-                fallbackBtn.style.display = 'block';
-                errBox.innerHTML = `<i class="fas fa-exclamation-circle"></i> <b>Unable to reach:</b> <code>${DB_URL}</code><br><span style="color:#ffd1d6;">Reason: ${e.message}</span><br><small style="color:var(--text-muted); display:block; margin-top:4px;">• Copy the exact URL from the top of your Firebase Realtime Database data tab (e.g. <b>https://project-default-rtdb.firebaseio.com</b> or <b>.asia-southeast1.firebasedatabase.app</b>).<br>• Or try leaving the Secret Token box empty if your database rules are public.</small>`;
+                statusBox.className = "login-status-box error";
+                statusBox.style.display = 'block';
+                statusBox.innerHTML = `<i class="fas fa-exclamation-circle"></i> <b>Connection Error:</b><br>${e.message}`;
                 showIsland("Connection Failed!", "error");
             }
         }
@@ -1263,15 +1281,20 @@
             const icon = document.getElementById('reload-icon');
             icon.classList.add('fa-spin');
             try {
-                const data = await fetchRootFromFirebase() || {};
-                DB = {
-                    config: data.config || DEFAULT_TEMPLATE_DB.config,
-                    keys: data.keys || {}
-                };
-                lastSyncedKeysHash = JSON.stringify(DB.keys);
-                loadConfig(); 
-                renderAll();
-                showIsland("Database Synced", "success", "fa-sync");
+                const target = buildFirebaseUrl("");
+                const urlToFetch = USING_CORS_PROXY ? `https://corsproxy.io/?${encodeURIComponent(target)}` : target;
+                const res = await fetch(urlToFetch);
+                if (res.ok) {
+                    const data = await res.json() || {};
+                    DB = {
+                        config: data.config || DEFAULT_TEMPLATE_DB.config,
+                        keys: data.keys || {}
+                    };
+                    lastSyncedKeysHash = JSON.stringify(DB.keys);
+                    loadConfig(); 
+                    renderAll();
+                    showIsland("Database Synced", "success", "fa-sync");
+                }
             } catch (e) {
                 showIsland("Refresh Failed", "error");
             }
@@ -1281,7 +1304,9 @@
         async function silentBackgroundSync() {
             if (!DB_URL) return;
             try {
-                const res = await fetch(buildFirebaseUrl("keys"));
+                const target = buildFirebaseUrl("keys");
+                const urlToFetch = USING_CORS_PROXY ? `https://corsproxy.io/?${encodeURIComponent(target)}` : target;
+                const res = await fetch(urlToFetch);
                 if (res.ok) {
                     const keysData = await res.json() || {};
                     const newHash = JSON.stringify(keysData);
@@ -1298,19 +1323,23 @@
         async function syncNode(nodePath, dataObj) {
             if (!DB_URL) return true;
             const cleanPath = nodePath.replace(/^\/+/, '');
+            const rawTarget = buildFirebaseUrl(cleanPath);
+            const target = USING_CORS_PROXY ? `https://corsproxy.io/?${encodeURIComponent(rawTarget)}` : rawTarget;
+
             try {
                 const method = dataObj === null ? 'DELETE' : 'PUT';
                 const options = { method };
                 if (dataObj !== null) options.body = JSON.stringify(dataObj);
-                const res = await fetch(buildFirebaseUrl(cleanPath), options);
+                const res = await fetch(target, options);
                 if (res.ok) return true;
             } catch (e) {}
 
             try {
                 const overrideMethod = dataObj === null ? 'DELETE' : 'PUT';
-                const baseUrl = buildFirebaseUrl(cleanPath);
-                const sep = baseUrl.includes('?') ? '&' : '?';
-                const res2 = await fetch(`${baseUrl}${sep}x-http-method-override=${overrideMethod}`, {
+                const sep = rawTarget.includes('?') ? '&' : '?';
+                const overrideUrl = `${rawTarget}${sep}x-http-method-override=${overrideMethod}`;
+                const finalUrl = USING_CORS_PROXY ? `https://corsproxy.io/?${encodeURIComponent(overrideUrl)}` : overrideUrl;
+                const res2 = await fetch(finalUrl, {
                     method: 'POST',
                     body: dataObj === null ? "" : JSON.stringify(dataObj)
                 });
@@ -1324,8 +1353,11 @@
         async function patchNode(nodePath, patchObj) {
             if (!DB_URL) return true;
             const cleanPath = nodePath.replace(/^\/+/, '');
+            const rawTarget = buildFirebaseUrl(cleanPath);
+            const target = USING_CORS_PROXY ? `https://corsproxy.io/?${encodeURIComponent(rawTarget)}` : rawTarget;
+
             try {
-                const res = await fetch(buildFirebaseUrl(cleanPath), {
+                const res = await fetch(target, {
                     method: 'PATCH',
                     body: JSON.stringify(patchObj)
                 });
@@ -1333,9 +1365,10 @@
             } catch (e) {}
 
             try {
-                const baseUrl = buildFirebaseUrl(cleanPath);
-                const sep = baseUrl.includes('?') ? '&' : '?';
-                const res2 = await fetch(`${baseUrl}${sep}x-http-method-override=PATCH`, {
+                const sep = rawTarget.includes('?') ? '&' : '?';
+                const overrideUrl = `${rawTarget}${sep}x-http-method-override=PATCH`;
+                const finalUrl = USING_CORS_PROXY ? `https://corsproxy.io/?${encodeURIComponent(overrideUrl)}` : overrideUrl;
+                const res2 = await fetch(finalUrl, {
                     method: 'POST',
                     body: JSON.stringify(patchObj)
                 });
