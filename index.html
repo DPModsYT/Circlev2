@@ -1,0 +1,2132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>DPMODS Edition Controller</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,800;1,900&family=JetBrains+Mono:wght@500;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Official Firebase SDK Fallback for WebSockets -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+    
+    <!-- INSTANT NETLIFY BADGE KILLER -->
+    <style>
+        #nl-badge, .nl-badge, [aria-label*="Netlify"], [aria-controls="nl-card"], #netlify-badge, iframe[src*="netlify"] {
+            display: none !important; visibility: hidden !important; opacity: 0 !important;
+            pointer-events: none !important; position: absolute !important;
+            top: -9999px !important; left: -9999px !important; z-index: -99999 !important; width: 0 !important; height: 0 !important;
+        }
+    </style>
+    <script>
+        const killNetlify = () => {
+            if (document.body) {
+                new MutationObserver(() => {
+                    document.querySelectorAll('[id*="netlify"], [class*="netlify"], .nl-badge, #nl-badge').forEach(el => {
+                        el.style.setProperty('display', 'none', 'important'); el.remove();
+                    });
+                }).observe(document.body, { childList: true, subtree: true });
+            } else requestAnimationFrame(killNetlify);
+        };
+        killNetlify();
+    </script>
+
+    <style>
+        :root {
+            --primary: #E23744;
+            --secondary: #FF7E8B;
+            --primary-dim: rgba(226, 55, 68, 0.14);
+            --primary-border: rgba(226, 55, 68, 0.4);
+            --primary-glow: 0 0 18px rgba(226, 55, 68, 0.45);
+
+            --cyan: #00E5FF;
+            --cyan-dim: rgba(0, 229, 255, 0.12);
+            --border-cyan: rgba(0, 229, 255, 0.35);
+            
+            --bg-dark: #07080b;
+            --bg-card: #12151C;
+            --bg-input: #191D26;
+            
+            --border-light: rgba(255, 255, 255, 0.08);
+            --text-main: #ffffff;
+            --text-muted: #8b92a5;
+            
+            --danger: #ff4757;
+            --danger-dim: rgba(255, 71, 87, 0.14);
+            --success: #2ed573;
+            --success-dim: rgba(46, 213, 115, 0.15);
+            --warning: #ffa502;
+            --warning-dim: rgba(255, 165, 2, 0.14);
+            
+            --nav-height: 75px;
+            color-scheme: dark;
+            font-family: 'Montserrat', sans-serif;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+        input, textarea, select { user-select: auto; font-family: inherit; } 
+        ::-webkit-scrollbar { display: none; }
+        
+        body { 
+            background: var(--bg-dark); color: var(--text-main); 
+            min-height: 100dvh; overflow-x: hidden; overscroll-behavior-y: contain; 
+        }
+
+        :focus-visible { outline: none; }
+        .app-container { max-width: 600px; margin: 0 auto; padding-bottom: calc(var(--nav-height) + 30px); display: flex; flex-direction: column; min-height: 100dvh; position: relative;}
+
+        /* --- DYNAMIC ISLAND SNACKBAR --- */
+        #dynamic-island {
+            position: fixed; top: 15px; left: 50%; transform: translateX(-50%) scale(0.85);
+            background: #1a1d26; color: #fff; border-radius: 12px; padding: 12px 20px;
+            display: flex; align-items: center; justify-content: center; gap: 10px;
+            font-weight: 700; font-size: 0.85rem; letter-spacing: 0.4px; 
+            opacity: 0; visibility: hidden; z-index: 99999; pointer-events: none;
+            transition: all 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.85), inset 0 0 0 1px rgba(255,255,255,0.12);
+            max-width: 92vw; text-align: center; border: 1px solid var(--border-light);
+        }
+        #dynamic-island.show { opacity: 1; visibility: visible; transform: translateX(-50%) scale(1); }
+
+        /* --- LOGIN SCREEN --- */
+        #login-screen { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 24px; text-align: center; z-index: 500; background: var(--bg-dark); transition: opacity 0.4s ease;}
+        .login-wrapper { display: flex; flex-direction: column; align-items: center; width: 100%; max-width: 370px; }
+        .logo-icon { font-size: 4rem; color: var(--primary); margin-bottom: 12px; filter: drop-shadow(var(--primary-glow)); }
+        #login-screen h1 { font-size: 1.95rem; font-weight: 900; font-style: italic; line-height: 1.1; margin-bottom: 24px; letter-spacing: -0.5px; text-transform: uppercase; display: flex; align-items: center; gap: 8px;}
+        .edition-pill { background: var(--primary); color: #fff; font-style: normal; font-size: 0.7rem; font-weight: 800; padding: 4px 10px; border-radius: 12px; letter-spacing: 0.8px;}
+
+        .login-card { background: var(--bg-card); border-radius: 20px; padding: 22px; border: 1px solid var(--border-light); width: 100%; margin-bottom: 15px; box-shadow: 0 20px 40px rgba(0,0,0,0.5);}
+        
+        .input-group { margin-bottom: 15px; text-align: start; width: 100%; }
+        .input-group label { display: block; font-size: 0.63rem; color: var(--text-muted); font-weight: 800; margin-bottom: 6px; padding: 0 4px; text-transform: uppercase; letter-spacing: 0.8px;}
+        .input-group input, .input-group textarea, .input-group select { width: 100%; background: var(--bg-input); border: 1px solid var(--border-light); border-radius: 12px; padding: 13px 15px; color: #fff; font-size: 0.88rem; font-weight: 600; outline: none; transition: 0.2s;}
+        .input-group input:focus, .input-group textarea:focus, .input-group select:focus { border-color: var(--primary); box-shadow: 0 0 8px rgba(226, 55, 68, 0.25); }
+        .input-row { display: flex; gap: 10px; }
+        .input-row .input-group { flex: 1; margin-bottom: 10px; }
+
+        .login-error-box {
+            display: none; background: rgba(255, 71, 87, 0.12); border: 1px solid rgba(255, 71, 87, 0.4);
+            color: #ff6b81; padding: 12px 14px; border-radius: 12px; font-size: 0.75rem; font-weight: 700;
+            text-align: left; margin-bottom: 14px; line-height: 1.45;
+        }
+
+        .btn-primary { width: 100%; padding: 15px; border-radius: 14px; border: none; font-size: 0.92rem; font-weight: 900; cursor: pointer; transition: 0.2s; background: linear-gradient(90deg, var(--primary), var(--secondary)); color: #fff; box-shadow: var(--primary-glow); text-transform: uppercase; letter-spacing: 1px;}
+        .btn-primary:active { transform: scale(0.96); opacity: 0.85;}
+
+        .saved-url-item { background: var(--bg-card); border: 1px solid var(--border-light); padding: 12px 16px; border-radius: 12px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; transition: 0.2s;}
+        .saved-url-item:active { transform: scale(0.98); background: #1a1e29; }
+
+        /* --- HEADER --- */
+        .page-header { padding: 36px 20px 15px; position: sticky; top: 0; background: rgba(7,8,11,0.92); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px); z-index: 50; border-bottom: 1px solid var(--border-light); }
+        .header-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        .app-main-title { font-size: 1.8rem; font-weight: 900; font-style: italic; letter-spacing: -0.5px; color: #fff; text-transform: uppercase; display: flex; gap: 8px; align-items: center;}
+        
+        .secure-badge { background: rgba(46, 213, 115, 0.12); border: 1px solid rgba(46, 213, 115, 0.35); color: var(--success); padding: 5px 12px; border-radius: 20px; font-size: 0.62rem; font-weight: 800; display: flex; align-items: center; gap: 6px; letter-spacing: 1px; flex-shrink: 0;}
+        .secure-dot { width: 6px; height: 6px; background: var(--success); border-radius: 50%; box-shadow: 0 0 6px var(--success); }
+
+        .header-sub { display: flex; justify-content: space-between; align-items: center; }
+        .sync-text { font-size: 0.7rem; color: var(--secondary); font-weight: 800; letter-spacing: 1px; text-transform: uppercase; display: flex; align-items: center; gap: 10px;}
+        
+        .disconnect-btn { background: transparent; border: 1px solid rgba(255, 71, 87, 0.4); color: var(--danger); padding: 5px 12px; border-radius: 12px; font-size: 0.65rem; font-weight: 800; display: flex; align-items: center; gap: 6px; cursor: pointer; transition: 0.2s;}
+        .disconnect-btn:active { background: var(--danger-dim); }
+
+        /* --- SLEEK COMPACT STATS CARDS (4 STATS) --- */
+        .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; padding: 14px 20px 10px; }
+        .stat-card { background: var(--bg-card); border: 1px solid var(--border-light); border-radius: 12px; padding: 10px 4px; text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: 0.2s; cursor: pointer;}
+        .stat-card:active { transform: scale(0.95); }
+        .stat-card.all { border-color: rgba(59, 130, 246, 0.35); }
+        .stat-card.act { border-color: rgba(46, 213, 115, 0.35); }
+        .stat-card.inact { border-color: rgba(0, 229, 255, 0.35); }
+        .stat-card.exp { border-color: rgba(255, 165, 2, 0.35); }
+        
+        .stat-icon { font-size: 0.9rem; margin-bottom: 4px; }
+        .stat-card.all .stat-icon { color: #3b82f6; }
+        .stat-card.act .stat-icon { color: var(--success); }
+        .stat-card.inact .stat-icon { color: var(--cyan); }
+        .stat-card.exp .stat-icon { color: var(--warning); }
+
+        .stat-num { font-size: 1.25rem; font-weight: 900; color: #fff; line-height: 1; margin-bottom: 3px; font-family: 'JetBrains Mono', monospace;}
+        .stat-label { font-size: 0.48rem; color: var(--text-muted); font-weight: 800; letter-spacing: 0.4px; text-transform: uppercase;}
+
+        /* --- SEARCH & FAB INLINE --- */
+        .search-fab-container { display: flex; gap: 10px; padding: 4px 20px 12px; align-items: center;}
+        .search-box { flex: 1; position: relative; }
+        .search-box i { position: absolute; left: 16px; top: 50%; transform: translateY(-50%); color: var(--primary); font-size: 0.9rem; }
+        .search-input { width: 100%; background: var(--bg-card); border: 1px solid var(--border-light); border-radius: 18px; padding: 13px 16px 13px 40px; color: #fff; font-size: 0.86rem; font-weight: 600; outline: none; transition: 0.2s;}
+        .search-input:focus { border-color: var(--primary); }
+        
+        .fab-inline { width: 46px; height: 46px; border-radius: 23px; background: linear-gradient(135deg, var(--primary), var(--secondary)); color: #fff; border: none; font-size: 1.25rem; display: flex; justify-content: center; align-items: center; box-shadow: var(--primary-glow); cursor: pointer; transition: 0.2s; flex-shrink: 0;}
+        .fab-inline:active { transform: scale(0.9); }
+
+        /* --- FILTERS --- */
+        .filter-chips-row { display: flex; gap: 7px; overflow-x: auto; padding: 0 20px 12px; scrollbar-width: none; }
+        .filter-chip { background: transparent; border: 1px solid var(--border-light); color: var(--text-muted); padding: 6px 13px; border-radius: 14px; font-size: 0.65rem; font-weight: 800; cursor: pointer; white-space: nowrap; transition: 0.2s; text-transform: uppercase; letter-spacing: 0.7px;}
+        .filter-chip.active { border-color: var(--primary); color: #fff; background: var(--primary-dim);}
+
+        /* --- BULK ACTIONS --- */
+        .bulk-actions-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; padding: 0 20px 14px; }
+        .bulk-btn { background: var(--bg-card); border: 1px solid var(--border-light); border-radius: 10px; padding: 10px 6px; display: flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; transition: 0.2s;}
+        .bulk-btn:active { transform: scale(0.96); background: rgba(255,255,255,0.05); }
+        .bulk-btn i { font-size: 0.88rem; }
+        .bulk-btn span { font-size: 0.56rem; font-weight: 800; text-transform: uppercase; text-align: left; line-height: 1.15; letter-spacing: 0.4px;}
+        
+        .btn-del-unused { color: var(--cyan); border-color: rgba(0, 229, 255, 0.28); }
+        .btn-del-exp { color: var(--danger); border-color: rgba(255, 71, 87, 0.3); }
+        .btn-unbind { color: var(--warning); border-color: rgba(255, 165, 2, 0.3); }
+
+        /* --- ACCORDION KEY CARDS (WITH VISIBLE HWID & REMAINING DAYS) --- */
+        .content-area { padding: 0 20px; display: flex; flex-direction: column; gap: 10px; }
+        
+        .acc-card { background: var(--bg-card); border-radius: 15px; border: 1px solid var(--border-light); overflow: hidden; transition: 0.25s ease; }
+        
+        .acc-header { display: flex; justify-content: space-between; align-items: center; padding: 13px 14px; cursor: pointer; user-select: none; gap: 8px;}
+        .acc-header-left { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; }
+        .acc-chevron { color: var(--text-muted); font-size: 0.75rem; transition: transform 0.3s; flex-shrink: 0;}
+        .acc-card.expanded .acc-chevron { transform: rotate(180deg); color: var(--primary); }
+        
+        .key-icon { color: var(--primary); font-size: 1.05rem; flex-shrink: 0;}
+        
+        .key-title-wrapper { display: flex; flex-direction: column; flex: 1; min-width: 0; justify-content: center; gap: 3px;}
+        .key-title { font-size: 0.88rem; font-weight: 800; color: #fff; font-family: 'JetBrains Mono', monospace; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        
+        .key-meta-line { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 0.62rem; font-weight: 700; }
+        .meta-time-pill { font-family: 'JetBrains Mono', monospace; padding: 2px 6px; border-radius: 5px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.07); }
+        .meta-hwid-pill { font-family: 'JetBrains Mono', monospace; color: var(--cyan); background: rgba(0, 229, 255, 0.08); border: 1px solid rgba(0, 229, 255, 0.2); padding: 2px 6px; border-radius: 5px; max-width: 145px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        
+        .acc-header-right { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+        .copy-badge { background: rgba(255,255,255,0.06); color: var(--text-muted); font-size: 0.54rem; padding: 4px 8px; border-radius: 6px; font-weight: 800; cursor: pointer; transition: 0.2s; border: 1px solid rgba(255,255,255,0.08);}
+        .copy-badge:active { background: var(--primary); color: #fff; }
+
+        .status-badge { display: flex; align-items: center; gap: 5px; padding: 4px 9px; border-radius: 8px; font-size: 0.56rem; font-weight: 900; letter-spacing: 0.5px; text-transform: uppercase; border: 1px solid transparent;}
+        .status-badge.active { background: var(--success-dim); border-color: rgba(46, 213, 115, 0.35); color: var(--success); }
+        .status-badge.inactive { background: var(--cyan-dim); border-color: var(--border-cyan); color: var(--cyan); }
+        .status-badge.expired { background: var(--warning-dim); border-color: rgba(255, 165, 2, 0.35); color: var(--warning); }
+        .status-badge.blocked { background: var(--danger-dim); border-color: rgba(255, 71, 87, 0.45); color: var(--danger); }
+        .badge-dot { width: 5px; height: 5px; border-radius: 50%; }
+
+        .acc-body { max-height: 0; overflow: hidden; transition: max-height 0.3s ease; background: rgba(0,0,0,0.35); }
+        .acc-content { padding: 14px; display: flex; flex-direction: column; gap: 12px; border-top: 1px solid rgba(255,255,255,0.04); }
+        
+        .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; background: rgba(255,255,255,0.015); padding: 10px 12px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.04);}
+        .info-box { display: flex; flex-direction: column; gap: 3px; min-width: 0;}
+        .info-lbl { font-size: 0.55rem; color: var(--text-muted); font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px;}
+        .info-val { font-size: 0.78rem; color: #fff; font-weight: 700; font-family: 'JetBrains Mono', monospace; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;}
+
+        .dev-list { background: rgba(0,0,0,0.45); border: 1px solid rgba(255,255,255,0.05); border-radius: 10px; padding: 10px 12px; }
+        .dev-list-header { font-size: 0.56rem; color: var(--text-muted); font-weight: 800; text-transform: uppercase; margin-bottom: 6px; letter-spacing: 0.5px; display: flex; justify-content: space-between;}
+        .dev-item { display: flex; justify-content: space-between; align-items: center; padding: 7px 0; border-bottom: 1px solid rgba(255,255,255,0.04); font-size: 0.78rem; gap: 8px;}
+        .dev-item:last-child { border-bottom: none; padding-bottom: 0; }
+        .dev-hwid { color: var(--cyan); font-family: 'JetBrains Mono', monospace; font-weight: 700; cursor: pointer; word-break: break-all;}
+        
+        .action-row { display: flex; gap: 7px; margin-top: 2px;}
+        .action-btn { flex: 1; padding: 10px 6px; border-radius: 9px; font-size: 0.68rem; font-weight: 800; cursor: pointer; border: none; display: flex; justify-content: center; align-items: center; gap: 5px; transition: 0.2s; text-transform: uppercase; letter-spacing: 0.4px;}
+        .action-btn:active { transform: scale(0.95); }
+        .btn-edit { background: rgba(255,255,255,0.08); color: #fff; border: 1px solid rgba(255,255,255,0.08);}
+        .btn-unbind-single { background: var(--warning-dim); color: var(--warning); border: 1px solid rgba(255,165,2,0.25); }
+        .btn-delete { background: var(--danger-dim); color: var(--danger); border: 1px solid rgba(255,71,87,0.25); }
+
+        /* SQUARE CHECKBOX */
+        .sq-checkbox {
+            appearance: none; width: 22px; height: 22px; background: var(--bg-input);
+            border: 2px solid rgba(255,255,255,0.25); border-radius: 6px; cursor: pointer;
+            position: relative; transition: 0.2s; outline: none; flex-shrink: 0;
+        }
+        .sq-checkbox:checked { background: var(--primary); border-color: var(--primary); box-shadow: 0 0 8px rgba(226, 55, 68, 0.4);}
+        .sq-checkbox:checked::after {
+            content: ''; position: absolute; left: 6px; top: 1px;
+            width: 5px; height: 11px; border: solid #fff;
+            border-width: 0 2.5px 2.5px 0; transform: rotate(45deg);
+        }
+
+        .load-more-btn { background: var(--primary-dim); color: var(--secondary); border: 1px solid var(--primary-border); width: 100%; padding: 13px; border-radius: 12px; margin-top: 8px; font-weight: 800; font-size: 0.8rem; cursor: pointer; transition: 0.2s; text-transform: uppercase; letter-spacing: 1px;}
+        .load-more-btn:active { transform: scale(0.98); }
+
+        .watermark { text-align: center; font-size: 0.65rem; font-weight: 800; color: rgba(255,255,255,0.2); letter-spacing: 2px; text-transform: uppercase; padding: 22px 0 10px; pointer-events: none; }
+
+        /* --- EXACT CIRCULAR NEON LIVE PREVIEW (MATCHES SCREENSHOT) --- */
+        #pv-container { display: flex; justify-content: center; align-items: center; padding: 10px 0 20px; }
+        .circle-outer-ring {
+            width: 345px; height: 345px; border-radius: 50%;
+            padding: 8px; position: relative;
+            background: radial-gradient(circle, rgba(226,55,68,0.25) 0%, rgba(18,21,28,0.95) 70%);
+            border: 2px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 0 35px rgba(226, 55, 68, 0.35), inset 0 0 20px rgba(226, 55, 68, 0.25);
+            display: flex; justify-content: center; align-items: center;
+        }
+        .circle-neon-border {
+            width: 100%; height: 100%; border-radius: 50%;
+            border: 3.5px solid var(--primary);
+            box-shadow: 0 0 18px var(--primary), inset 0 0 15px rgba(226, 55, 68, 0.35);
+            background: var(--bg-card);
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            padding: 22px 24px; text-align: center; position: relative; overflow: hidden;
+        }
+        .pv-shield-pill {
+            background: rgba(46, 213, 115, 0.1); border: 1px solid rgba(46, 213, 115, 0.35);
+            color: #2ed573; font-size: 0.52rem; font-weight: 800; letter-spacing: 1px;
+            padding: 4px 12px; border-radius: 20px; margin-bottom: 8px; text-transform: uppercase;
+        }
+        .pv-brand-row {
+            display: flex; align-items: center; justify-content: center; gap: 7px; margin-bottom: 3px;
+        }
+        #pv-brand-title {
+            font-size: 1.35rem; font-weight: 900; font-style: italic; color: #ffffff; letter-spacing: 0.5px;
+        }
+        #pv-brand-badge {
+            background: var(--primary); color: #ffffff; font-size: 0.55rem; font-weight: 800;
+            padding: 3px 8px; border-radius: 10px; letter-spacing: 0.6px; text-transform: uppercase;
+        }
+        #pv-subtitle {
+            font-size: 0.6rem; color: #8b92a5; font-weight: 600; margin-bottom: 12px;
+        }
+        .pv-field-pill {
+            width: 100%; height: 38px; border-radius: 20px; background: var(--bg-input);
+            border: 1px solid rgba(255, 255, 255, 0.09); padding: 0 6px 0 14px;
+            display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;
+        }
+        .pv-field-pill.key-box {
+            border-color: var(--primary);
+        }
+        .pv-field-left {
+            display: flex; align-items: center; gap: 8px; min-width: 0; flex: 1; text-align: left;
+        }
+        .pv-field-tag {
+            font-size: 0.55rem; font-weight: 800; color: #8b92a5; text-transform: uppercase; flex-shrink: 0;
+        }
+        .pv-field-tag.red { color: var(--secondary); }
+        .pv-field-val {
+            font-size: 0.68rem; font-weight: 600; color: #ffffff; font-family: 'JetBrains Mono', monospace;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .pv-field-hint {
+            font-size: 0.65rem; font-weight: 500; color: #6c7385;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .pv-mini-btn {
+            background: rgba(255, 255, 255, 0.08); color: #fff; font-size: 0.55rem; font-weight: 800;
+            padding: 6px 11px; border-radius: 14px; text-transform: uppercase; flex-shrink: 0;
+        }
+        .pv-mini-btn.red {
+            background: var(--primary); color: #fff;
+        }
+        #pv-verify-btn {
+            width: 94%; height: 40px; border-radius: 22px; border: none;
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+            color: #ffffff; font-size: 0.7rem; font-weight: 800; letter-spacing: 0.8px;
+            text-transform: uppercase; display: flex; align-items: center; justify-content: center;
+            margin-top: 2px; margin-bottom: 8px; box-shadow: 0 4px 15px rgba(226, 55, 68, 0.35);
+        }
+        #pv-get-key-text {
+            font-size: 0.56rem; font-weight: 800; color: var(--secondary); letter-spacing: 0.6px; text-transform: uppercase;
+        }
+
+        [contenteditable="true"] { outline: none; transition: background 0.2s, border-radius 0.2s; cursor: text; }
+        [contenteditable="true"]:focus { background: rgba(255, 255, 255, 0.12); border-radius: 4px; box-shadow: 0 0 0 2px var(--primary); padding: 0 4px; }
+
+        /* --- BOTTOM NAV --- */
+        .bottom-nav { position: fixed; bottom: 0; left: 0; width: 100%; height: var(--nav-height); background: rgba(10,11,15,0.95); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border-top: 1px solid var(--border-light); display: flex; justify-content: space-around; align-items: center; z-index: 1000; padding-bottom: env(safe-area-inset-bottom); }
+        .nav-item { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; font-size: 0.6rem; font-weight: 800; cursor: pointer; transition: 0.3s; flex: 1; height: 100%; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px;}
+        .nav-icon-wrap { width: 42px; height: 28px; border-radius: 14px; display: flex; justify-content: center; align-items: center; font-size: 1.15rem; transition: 0.3s; margin-bottom: 2px;}
+        .nav-item.active .nav-icon-wrap { background: var(--primary-dim); color: var(--primary); }
+        .nav-item.active span { color: var(--secondary); }
+
+        .view { display: none; }
+        .view.active { display: block; animation: smoothFadeIn 0.25s ease forwards; }
+        @keyframes smoothFadeIn { 0% { opacity: 0; transform: translateY(8px); } 100% { opacity: 1; transform: translateY(0); } }
+
+        /* --- MODALS --- */
+        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(8px); z-index: 2000; opacity: 0; visibility: hidden; transition: 0.3s ease; pointer-events: none; display: flex; justify-content: center; align-items: flex-end;}
+        .modal-overlay.active { opacity: 1; visibility: visible; pointer-events: auto; }
+        .modal-card { background: var(--bg-card); width: 100%; max-width: 600px; border-radius: 24px 24px 0 0; padding: 22px 24px 40px; transform: translateY(100%); transition: 0.35s cubic-bezier(0.175, 0.885, 0.32, 1); border-top: 1px solid var(--primary-border); box-shadow: 0 -10px 40px rgba(226, 55, 68, 0.15); max-height: 88vh; overflow-y: auto;}
+        .modal-overlay.active .modal-card { transform: translateY(0); }
+        .modal-handle { width: 40px; height: 4px; background: rgba(255,255,255,0.2); border-radius: 2px; margin: -6px auto 18px; }
+        
+        .modal-btn-cancel { flex: 1; background: #1a1e29; color: #fff; border: 1px solid rgba(255,255,255,0.1); padding: 14px; border-radius: 12px; font-weight: 800; font-size: 0.88rem; cursor: pointer; text-transform: uppercase; letter-spacing: 1px; transition: 0.2s;}
+        .modal-btn-cancel:active { background: #222; }
+        .modal-btn-action { flex: 2; background: linear-gradient(90deg, var(--primary), var(--secondary)); color: #fff; border: none; padding: 14px; border-radius: 12px; font-weight: 900; font-size: 0.88rem; cursor: pointer; text-transform: uppercase; letter-spacing: 1px; transition: 0.2s; box-shadow: var(--primary-glow);}
+        .modal-btn-action.red { background: var(--danger); color: #fff; box-shadow: 0 0 15px rgba(255,71,87,0.3);}
+        .modal-btn-action:active { transform: scale(0.97); }
+
+        .sq-btn { width: 46px; height: 46px; border-radius: 12px; background: var(--bg-input); border: 1px solid var(--border-light); display: flex; justify-content: center; align-items: center; cursor: pointer; flex-shrink: 0; transition: 0.2s;}
+        .sq-btn:active { background: #252a36; transform: scale(0.94);}
+        
+        .quick-days-row { display: flex; gap: 6px; margin-top: 8px; }
+        .q-day-btn { flex: 1; background: var(--primary-dim); border: 1px solid var(--primary-border); color: var(--secondary); padding: 8px 4px; border-radius: 8px; font-size: 0.68rem; font-weight: 800; cursor: pointer; text-align: center;}
+        .q-day-btn:active { background: var(--primary); color: #fff; }
+
+        .empty-state { text-align: center; padding: 40px 20px; color: var(--text-muted); font-weight: 800; font-size: 0.85rem; letter-spacing: 1px; text-transform: uppercase;}
+        .ios-card { background: var(--bg-card); border-radius: 18px; padding: 18px; border: 1px solid var(--border-light); margin-bottom: 16px; }
+    </style>
+</head>
+<body dir="ltr">
+
+    <!-- DYNAMIC ISLAND -->
+    <div id="dynamic-island"><i id="di-icon" class="fas fa-check-circle"></i> <span id="di-msg"></span></div>
+
+    <!-- FIREBASE LOGIN SCREEN -->
+    <div id="login-screen">
+        <div class="login-wrapper">
+            <div class="logo-icon"><i class="fas fa-shield-halved"></i></div>
+            <h1>DPMODS <span class="edition-pill">EDITION</span></h1>
+            
+            <div class="login-card">
+                <div class="input-group">
+                    <label>Firebase Database URL</label>
+                    <input type="text" id="auth-url" placeholder="https://your-db-default-rtdb.firebaseio.com" autocomplete="off" spellcheck="false">
+                </div>
+                <div class="input-group">
+                    <label>Database Secret / Token (Optional if Public)</label>
+                    <input type="password" id="auth-secret" placeholder="Leave blank if rules are public (true)" autocomplete="off">
+                </div>
+                <div id="login-error-box" class="login-error-box"></div>
+                <button id="login-btn" class="btn-primary" onclick="login()" style="margin-top: 4px;">CONNECT SHIELD</button>
+            </div>
+            
+            <div id="saved-connections" style="width: 100%; text-align: start; display: none;">
+                <div style="display:flex; justify-content:space-between; margin: 10px 4px 8px;">
+                    <span style="color:var(--text-muted); font-size:0.68rem; font-weight:800; text-transform:uppercase; letter-spacing:1px;">Saved Connections</span>
+                    <span style="color:var(--danger); font-size:0.68rem; font-weight:800; cursor:pointer; letter-spacing:1px;" onclick="clearAllHistory()">CLEAR</span>
+                </div>
+                <div id="saved-url-list"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MAIN APP -->
+    <div class="app-container" id="main-app" style="display: none;">
+        
+        <div class="page-header">
+            <div class="header-top">
+                <div class="app-main-title">
+                    <span id="hdr-brand-title">DPMODS</span>
+                    <span class="edition-pill" id="hdr-brand-badge">EDITION</span>
+                </div>
+                <div class="secure-badge"><div class="secure-dot"></div> <span id="conn-mode-txt">CLOUD SHIELD</span></div>
+            </div>
+            <div class="header-sub">
+                <div class="sync-text">
+                    <span>LIVE DATABASE SYNC</span>
+                    <i class="fas fa-sync-alt" id="reload-icon" style="cursor:pointer; color:#fff; font-size:0.8rem;" onclick="fetchDatabase()" title="Refresh"></i>
+                </div>
+                <div class="disconnect-btn" onclick="logout()"><i class="fas fa-power-off"></i> DISCONNECT</div>
+            </div>
+        </div>
+
+        <!-- KEYS VIEW -->
+        <div id="view-keys" class="view active">
+            <!-- 4 COMPACT STATS: TOTAL, ACTIVE, INACTIVE, EXPIRED -->
+            <div class="stats-grid">
+                <div class="stat-card all" onclick="setFilterByStat('all')">
+                    <i class="fas fa-key stat-icon"></i>
+                    <div class="stat-num" id="stat-total">0</div>
+                    <div class="stat-label">TOTAL KEYS</div>
+                </div>
+                <div class="stat-card act" onclick="setFilterByStat('active')">
+                    <i class="fas fa-bolt stat-icon"></i>
+                    <div class="stat-num" id="stat-active">0</div>
+                    <div class="stat-label">ACTIVE</div>
+                </div>
+                <div class="stat-card inact" onclick="setFilterByStat('inactive')">
+                    <i class="fas fa-pause-circle stat-icon"></i>
+                    <div class="stat-num" id="stat-inactive">0</div>
+                    <div class="stat-label">INACTIVE</div>
+                </div>
+                <div class="stat-card exp" onclick="setFilterByStat('expired')">
+                    <i class="fas fa-hourglass-end stat-icon"></i>
+                    <div class="stat-num" id="stat-expired">0</div>
+                    <div class="stat-label">EXPIRED</div>
+                </div>
+            </div>
+
+            <!-- SEARCH & INLINE FAB -->
+            <div class="search-fab-container">
+                <div class="search-box">
+                    <i class="fas fa-search"></i>
+                    <input type="text" class="search-input" id="search-keys" placeholder="Search Key, Bound HWID or Duration..." oninput="handleSearch()">
+                </div>
+                <button class="fab-inline" onclick="openKeyModal()"><i class="fas fa-plus"></i></button>
+            </div>
+
+            <!-- FILTERS -->
+            <div class="filter-chips-row">
+                <button class="filter-chip active" id="chip-all" onclick="setFilter('all', this)">ALL</button>
+                <button class="filter-chip" id="chip-active" onclick="setFilter('active', this)">ACTIVE</button>
+                <button class="filter-chip" id="chip-inactive" onclick="setFilter('inactive', this)">INACTIVE</button>
+                <button class="filter-chip" id="chip-expired" onclick="setFilter('expired', this)">EXPIRED</button>
+                <button class="filter-chip" id="chip-blocked" onclick="setFilter('blocked', this)">BLOCKED</button>
+            </div>
+
+            <!-- BULK ACTIONS -->
+            <div class="bulk-actions-grid">
+                <button class="bulk-btn btn-del-unused" onclick="bulkDeleteInactive()">
+                    <i class="fas fa-trash-alt"></i>
+                    <span>DELETE<br>INACTIVE</span>
+                </button>
+                <button class="bulk-btn btn-del-exp" onclick="bulkDeleteExpired()">
+                    <i class="fas fa-calendar-times"></i>
+                    <span>DELETE<br>EXPIRED</span>
+                </button>
+                <button class="bulk-btn btn-unbind" onclick="bulkUnbindAll()">
+                    <i class="fas fa-unlink"></i>
+                    <span>RESET /<br>UNBIND ALL</span>
+                </button>
+            </div>
+
+            <div class="content-area" id="keys-list"></div>
+            <div style="padding: 0 20px 10px;" id="keys-load-more-box"></div>
+        </div>
+
+        <!-- BANNED HWIDs VIEW -->
+        <div id="view-bans" class="view">
+            <div class="search-fab-container" style="padding-top:16px;">
+                <div class="search-box">
+                    <i class="fas fa-search"></i>
+                    <input type="text" class="search-input" id="search-bans" placeholder="Search Blacklisted HWID or Reason..." oninput="renderBans()">
+                </div>
+                <button class="sq-btn" style="background:var(--danger); box-shadow:0 0 12px rgba(255,71,87,0.3); border:none;" onclick="openBanModal()"><i class="fas fa-ban" style="color:#fff;"></i></button>
+            </div>
+            <div class="content-area" id="bans-list"></div>
+        </div>
+
+        <!-- BOUND DEVICES INSPECTOR VIEW -->
+        <div id="view-devices" class="view">
+            <div class="search-fab-container" style="padding-top:16px;">
+                <div class="search-box">
+                    <i class="fas fa-search"></i>
+                    <input type="text" class="search-input" id="search-devs" placeholder="Search Bound HWID or Key..." oninput="renderBoundDevicesTab()">
+                </div>
+            </div>
+            <div class="content-area" id="bound-devs-list"></div>
+        </div>
+
+        <!-- SETTINGS VIEW (config) -->
+        <div id="view-config" class="view">
+            <div class="content-area" style="padding-top:14px;">
+                
+                <h3 style="color:var(--secondary); font-size:0.75rem; text-transform:uppercase; letter-spacing:1px; display:flex; align-items:center; gap:8px; margin-left:4px;">
+                    <i class="fas fa-circle-notch"></i> Live Circular Shield Preview (Tap Text to Edit)
+                </h3>
+                
+                <!-- EXACT CIRCULAR NEON DIALOG PREVIEW (MATCHES SCREENSHOT) -->
+                <div id="pv-container">
+                    <div class="circle-outer-ring" id="pv-outer-ring">
+                        <div class="circle-neon-border" id="pv-circle-card">
+                            <div class="pv-shield-pill" id="pv-status-pill" contenteditable="true" onkeyup="updateFromPreview('pv-status-pill', 'ui-status-pill')">● LIVE CLOUD SHIELD</div>
+                            
+                            <div class="pv-brand-row">
+                                <span id="pv-brand-title" contenteditable="true" onkeyup="updateFromPreview('pv-brand-title', 'ui-brand-title')">DPMODS</span>
+                                <span id="pv-brand-badge" contenteditable="true" onkeyup="updateFromPreview('pv-brand-badge', 'ui-brand-badge')">EDITION</span>
+                            </div>
+
+                            <div id="pv-subtitle" contenteditable="true" onkeyup="updateFromPreview('pv-subtitle', 'ui-subtitle')">Background & Foreground Protected</div>
+
+                            <div class="pv-field-pill" id="pv-hwid-box">
+                                <div class="pv-field-left">
+                                    <span class="pv-field-tag">HWID</span>
+                                    <span class="pv-field-val">87d7ea7faf897f9f</span>
+                                </div>
+                                <span class="pv-mini-btn">COPY</span>
+                            </div>
+
+                            <div class="pv-field-pill key-box" id="pv-key-box">
+                                <div class="pv-field-left">
+                                    <span class="pv-field-tag red">KEY</span>
+                                    <span class="pv-field-hint" id="pv-key-hint" contenteditable="true" onkeyup="updateFromPreview('pv-key-hint', 'ui-key-hint')">Enter or Paste License Key</span>
+                                </div>
+                                <span class="pv-mini-btn red" id="pv-paste-btn">PASTE</span>
+                            </div>
+
+                            <div id="pv-verify-btn" contenteditable="true" onkeyup="updateFromPreview('pv-verify-btn', 'ui-verify-btn')">UNLOCK APPLICATION</div>
+
+                            <div id="pv-get-key-text" contenteditable="true" onkeyup="updateFromPreview('pv-get-key-text', 'ui-get-key-text')">GET KEY / SUPPORT →</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- UI Theme Colors Card -->
+                <div class="ios-card">
+                    <h3 style="margin-bottom: 14px; color:var(--secondary); font-size:0.85rem; text-transform:uppercase; letter-spacing:1px; display:flex; align-items:center; gap:8px;">
+                        <i class="fas fa-palette"></i> UI Theme Colors (ui_theme)
+                    </h3>
+
+                    <div class="input-row">
+                        <div class="input-group">
+                            <label>PRIMARY COLOR</label>
+                            <div style="display:flex; gap:6px;">
+                                <input type="color" id="pick-primary" value="#E23744" style="width:44px; height:44px; padding:3px; cursor:pointer; flex-shrink:0;" onchange="document.getElementById('thm-primary').value=this.value.toUpperCase(); syncToPreview();">
+                                <input type="text" id="thm-primary" value="#E23744" oninput="syncToPreview()" style="font-family:'JetBrains Mono', monospace; height:44px; text-transform:uppercase;">
+                            </div>
+                        </div>
+                        <div class="input-group">
+                            <label>SECONDARY COLOR</label>
+                            <div style="display:flex; gap:6px;">
+                                <input type="color" id="pick-secondary" value="#FF7E8B" style="width:44px; height:44px; padding:3px; cursor:pointer; flex-shrink:0;" onchange="document.getElementById('thm-secondary').value=this.value.toUpperCase(); syncToPreview();">
+                                <input type="text" id="thm-secondary" value="#FF7E8B" oninput="syncToPreview()" style="font-family:'JetBrains Mono', monospace; height:44px; text-transform:uppercase;">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="input-row">
+                        <div class="input-group" style="margin-bottom:4px;">
+                            <label>CARD BG COLOR</label>
+                            <div style="display:flex; gap:6px;">
+                                <input type="color" id="pick-card-bg" value="#12151C" style="width:44px; height:44px; padding:3px; cursor:pointer; flex-shrink:0;" onchange="document.getElementById('thm-card-bg').value=this.value.toUpperCase(); syncToPreview();">
+                                <input type="text" id="thm-card-bg" value="#12151C" oninput="syncToPreview()" style="font-family:'JetBrains Mono', monospace; height:44px; text-transform:uppercase;">
+                            </div>
+                        </div>
+                        <div class="input-group" style="margin-bottom:4px;">
+                            <label>INPUT BG COLOR</label>
+                            <div style="display:flex; gap:6px;">
+                                <input type="color" id="pick-input-bg" value="#191D26" style="width:44px; height:44px; padding:3px; cursor:pointer; flex-shrink:0;" onchange="document.getElementById('thm-input-bg').value=this.value.toUpperCase(); syncToPreview();">
+                                <input type="text" id="thm-input-bg" value="#191D26" oninput="syncToPreview()" style="font-family:'JetBrains Mono', monospace; height:44px; text-transform:uppercase;">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Dialog UI Texts Card -->
+                <div class="ios-card">
+                    <h3 style="margin-bottom: 14px; color:var(--secondary); font-size:0.85rem; text-transform:uppercase; letter-spacing:1px; display:flex; align-items:center; gap:8px;">
+                        <i class="fas fa-pen-nib"></i> Dialog UI Texts (dialog_ui)
+                    </h3>
+
+                    <div class="input-row">
+                        <div class="input-group">
+                            <label>BRAND TITLE</label>
+                            <input type="text" id="ui-brand-title" oninput="syncToPreview()" placeholder="DPMODS">
+                        </div>
+                        <div class="input-group">
+                            <label>BRAND BADGE</label>
+                            <input type="text" id="ui-brand-badge" oninput="syncToPreview()" placeholder="EDITION">
+                        </div>
+                    </div>
+
+                    <div class="input-row">
+                        <div class="input-group">
+                            <label>STATUS PILL</label>
+                            <input type="text" id="ui-status-pill" oninput="syncToPreview()" placeholder="● LIVE CLOUD SHIELD">
+                        </div>
+                        <div class="input-group">
+                            <label>KEY HINT</label>
+                            <input type="text" id="ui-key-hint" oninput="syncToPreview()" placeholder="Enter or Paste License Key">
+                        </div>
+                    </div>
+
+                    <div class="input-group">
+                        <label>SUBTITLE</label>
+                        <input type="text" id="ui-subtitle" oninput="syncToPreview()" placeholder="Background & Foreground Protected">
+                    </div>
+
+                    <div class="input-row">
+                        <div class="input-group">
+                            <label>VERIFY BUTTON TEXT</label>
+                            <input type="text" id="ui-verify-btn" oninput="syncToPreview()" placeholder="UNLOCK APPLICATION">
+                        </div>
+                        <div class="input-group">
+                            <label>GET KEY TEXT</label>
+                            <input type="text" id="ui-get-key-text" oninput="syncToPreview()" placeholder="GET KEY / SUPPORT →">
+                        </div>
+                    </div>
+
+                    <div class="input-group" style="margin-bottom:4px;">
+                        <label>GET KEY / SUPPORT URL (get_key_url)</label>
+                        <input type="text" id="ui-get-key-url" placeholder="https://t.me/dpmods">
+                    </div>
+                </div>
+
+                <!-- Shield Protection & Intervals Card -->
+                <div class="ios-card">
+                    <h3 style="margin-bottom: 14px; color:var(--cyan); font-size:0.85rem; text-transform:uppercase; letter-spacing:1px; display:flex; align-items:center; gap:8px;">
+                        <i class="fas fa-shield-virus"></i> Cloud Shield & Intervals
+                    </h3>
+
+                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:14px;">
+                        <div style="padding: 12px 14px; background:rgba(46,213,115,0.05); border:1px solid rgba(46,213,115,0.2); border-radius:12px; display:flex; justify-content:space-between; align-items:center;">
+                            <span style="font-weight:800; font-size:0.8rem; color:var(--success);">show_dialog</span>
+                            <input type="checkbox" class="sq-checkbox" id="cfg-show-dialog">
+                        </div>
+                        <div style="padding: 12px 14px; background:rgba(226,55,68,0.06); border:1px solid rgba(226,55,68,0.25); border-radius:12px; display:flex; justify-content:space-between; align-items:center;">
+                            <span style="font-weight:800; font-size:0.8rem; color:var(--secondary);">kill_in_bg</span>
+                            <input type="checkbox" class="sq-checkbox" id="cfg-kill-bg">
+                        </div>
+                    </div>
+
+                    <div class="input-row">
+                        <div class="input-group">
+                            <label>CHECK INTERVAL (SEC)</label>
+                            <input type="number" id="cfg-check-sec" value="5" min="1" style="font-family:'JetBrains Mono', monospace;">
+                        </div>
+                        <div class="input-group">
+                            <label>BG CHECK INTERVAL (SEC)</label>
+                            <input type="number" id="cfg-bg-check-sec" value="10" min="1" style="font-family:'JetBrains Mono', monospace;">
+                        </div>
+                    </div>
+
+                    <div class="input-group" style="margin-bottom:4px;">
+                        <label>DEFAULT BAN MESSAGE (default_ban_message)</label>
+                        <textarea id="cfg-ban-msg" rows="2"></textarea>
+                    </div>
+                </div>
+
+                <!-- Maintenance Card -->
+                <div class="ios-card">
+                    <h3 style="margin-bottom: 14px; color:var(--warning); font-size:0.85rem; text-transform:uppercase; letter-spacing:1px; display:flex; align-items:center; gap:8px;">
+                        <i class="fas fa-tools"></i> Server Maintenance (maintenance)
+                    </h3>
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; padding: 12px 14px; background:rgba(255,165,2,0.05); border:1px solid rgba(255,165,2,0.2); border-radius:12px;">
+                        <span style="font-weight:800; font-size:0.88rem; color:var(--warning);">Enable Maintenance (status)</span>
+                        <input type="checkbox" class="sq-checkbox" id="mnt-status">
+                    </div>
+                    <div class="input-group">
+                        <label>MAINTENANCE TITLE</label>
+                        <input type="text" id="mnt-title" placeholder="SERVER MAINTENANCE">
+                    </div>
+                    <div class="input-group" style="margin-bottom:4px;">
+                        <label>MAINTENANCE MESSAGE</label>
+                        <textarea id="mnt-msg" rows="2"></textarea>
+                    </div>
+                </div>
+
+                <!-- Critical Update Card -->
+                <div class="ios-card">
+                    <h3 style="margin-bottom: 14px; color:var(--danger); font-size:0.85rem; text-transform:uppercase; letter-spacing:1px; display:flex; align-items:center; gap:8px;">
+                        <i class="fas fa-cloud-arrow-down"></i> Critical Update (update)
+                    </h3>
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; padding: 12px 14px; background:rgba(255,71,87,0.05); border:1px solid rgba(255,71,87,0.2); border-radius:12px;">
+                        <span style="font-weight:800; font-size:0.88rem; color:var(--danger);">Enable Mandatory Update (status)</span>
+                        <input type="checkbox" class="sq-checkbox" id="upd-status">
+                    </div>
+                    <div class="input-row">
+                        <div class="input-group">
+                            <label>UPDATE TITLE</label>
+                            <input type="text" id="upd-title" placeholder="CRITICAL UPDATE">
+                        </div>
+                        <div class="input-group">
+                            <label>BUTTON TEXT</label>
+                            <input type="text" id="upd-btn" placeholder="DOWNLOAD UPDATE">
+                        </div>
+                    </div>
+                    <div class="input-group">
+                        <label>UPDATE URL</label>
+                        <input type="text" id="upd-url" placeholder="https://t.me/dpmods">
+                    </div>
+                    <div class="input-group" style="margin-bottom:4px;">
+                        <label>UPDATE MESSAGE</label>
+                        <textarea id="upd-msg" rows="2"></textarea>
+                    </div>
+                </div>
+
+                <button class="btn-primary" onclick="saveConfig()" style="margin-bottom:20px;">SAVE ALL CONFIG</button>
+            </div>
+        </div>
+
+        <div class="watermark">POWERED BY <span style="color:var(--primary);">DPMODS EDITION</span></div>
+    </div>
+
+    <!-- MODALS -->
+
+    <!-- Custom Confirm Modal -->
+    <div class="modal-overlay" id="confirm-modal" style="align-items: center; padding: 20px;">
+        <div class="modal-card" style="border-radius: 22px; max-width: 380px; padding: 24px; text-align: center; border: 1px solid var(--border-light);">
+            <div style="width: 52px; height: 52px; border-radius: 26px; background: var(--danger-dim); color: var(--danger); display: flex; justify-content: center; align-items: center; font-size: 1.4rem; margin: 0 auto 14px;">
+                <i class="fas fa-exclamation-triangle"></i>
+            </div>
+            <h3 id="confirm-modal-title" style="font-size: 1.15rem; font-weight: 900; margin-bottom: 8px; text-transform: uppercase;">CONFIRM ACTION</h3>
+            <p id="confirm-modal-msg" style="font-size: 0.82rem; color: var(--text-muted); font-weight: 600; line-height: 1.45; margin-bottom: 20px; word-break: break-all;"></p>
+            <div style="display: flex; gap: 10px;">
+                <button class="modal-btn-cancel" onclick="closeConfirmModal()">CANCEL</button>
+                <button class="modal-btn-action red" id="confirm-modal-yes-btn">CONFIRM</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Key Modal -->
+    <div class="modal-overlay" id="key-modal">
+        <div class="modal-card">
+            <div class="modal-handle"></div>
+            <h2 style="font-size:1.25rem; font-weight:900; text-align:center; margin-bottom:18px; text-transform:uppercase;">GENERATE LICENSE KEY</h2>
+            
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; padding:12px 16px; background:rgba(255,255,255,0.03); border-radius:12px; border:1px solid var(--border-light);">
+                <span style="font-weight:800; font-size:0.9rem;">Generate Bulk Keys</span>
+                <input type="checkbox" class="sq-checkbox" id="chk-bulk" onchange="document.getElementById('bulk-qty-row').style.display = this.checked ? 'block' : 'none'; document.getElementById('single-key-row').style.display = this.checked ? 'none' : 'block';">
+            </div>
+
+            <div class="input-group" id="single-key-row">
+                <label>KEY ID / TOKEN</label>
+                <div style="display:flex; gap:10px;">
+                    <input type="text" id="mod-key-id" value="ZOMATO-VIP-" style="font-family: 'JetBrains Mono', monospace; font-size:0.95rem; height:46px;">
+                    <div class="sq-btn" onclick="randomKey()" title="Generate Random Key"><i class="fas fa-dice" style="color:var(--primary); font-size:1.2rem;"></i></div>
+                </div>
+            </div>
+
+            <div class="input-group" id="bulk-qty-row" style="display:none;">
+                <label>QUANTITY TO GENERATE</label>
+                <input type="number" id="mod-bulk-qty" value="10" min="2" max="100" style="height:46px;">
+            </div>
+
+            <div class="input-row">
+                <div class="input-group">
+                    <label>DURATION (DAYS)</label>
+                    <input type="number" id="mod-key-days" value="30" min="1" style="height:46px; font-family:'JetBrains Mono', monospace;">
+                </div>
+                <div class="input-group">
+                    <label>MAX DEVICES</label>
+                    <input type="number" id="mod-key-limit" value="1" min="1" style="height:46px; font-family:'JetBrains Mono', monospace;">
+                </div>
+            </div>
+
+            <div class="quick-days-row" style="margin-bottom:14px;">
+                <div class="q-day-btn" onclick="document.getElementById('mod-key-days').value=1">1 Day</div>
+                <div class="q-day-btn" onclick="document.getElementById('mod-key-days').value=7">7 Days</div>
+                <div class="q-day-btn" onclick="document.getElementById('mod-key-days').value=30">30 Days</div>
+                <div class="q-day-btn" onclick="document.getElementById('mod-key-days').value=365">365 Days</div>
+            </div>
+
+            <div style="display:flex; justify-content:space-between; align-items:center; padding:12px 14px; background:rgba(46,213,115,0.06); border:1px solid rgba(46,213,115,0.25); border-radius:12px;">
+                <span style="font-weight:800; font-size:0.84rem; color:var(--success);">Start Countdown Now (Active Immediately)</span>
+                <input type="checkbox" class="sq-checkbox" id="mod-start-now">
+            </div>
+
+            <div style="display: flex; gap: 12px; margin-top: 22px;">
+                <button class="modal-btn-cancel" onclick="closeModals()">CANCEL</button>
+                <button class="modal-btn-action" onclick="saveKey()">GENERATE</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Key Modal -->
+    <div class="modal-overlay" id="edit-key-modal">
+        <div class="modal-card">
+            <div class="modal-handle"></div>
+            <h2 style="color:var(--secondary); font-size:1.25rem; font-weight:900; text-align:center; margin-bottom:18px; text-transform:uppercase;">MANAGE KEY</h2>
+            
+            <div class="input-group">
+                <label>KEY ID</label>
+                <input type="text" id="edit-key-id" readonly style="opacity:0.65; font-family:'JetBrains Mono', monospace; height:46px;">
+            </div>
+
+            <div style="background:rgba(255,71,87,0.06); padding:13px 16px; border-radius:12px; margin-bottom:16px; border:1px solid rgba(255,71,87,0.25);">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <span style="font-weight:800; font-size:0.9rem; color:var(--danger);">Block this Key (is_blocked)</span>
+                    <input type="checkbox" class="sq-checkbox" id="edit-key-blocked" style="border-color:var(--danger);">
+                </div>
+            </div>
+
+            <div class="input-row">
+                <div class="input-group">
+                    <label>DURATION (DAYS)</label>
+                    <input type="number" id="edit-key-days" min="1" style="height:46px; font-family:'JetBrains Mono', monospace;">
+                </div>
+                <div class="input-group">
+                    <label>MAX DEVICES</label>
+                    <input type="number" id="edit-key-limit" min="1" style="height:46px; font-family:'JetBrains Mono', monospace;">
+                </div>
+            </div>
+
+            <div class="input-group">
+                <label>EXPIRY TIMESTAMP (UNIX SECONDS • 0 = INACTIVE / UNUSED)</label>
+                <input type="number" id="edit-key-exp-time" style="height:46px; font-family:'JetBrains Mono', monospace;" oninput="updateEditExpiryPreview()">
+                <div id="edit-exp-human" style="font-size:0.68rem; color:var(--cyan); font-weight:700; margin-top:5px; padding-left:4px;">Status: Inactive (0)</div>
+                <div class="quick-days-row">
+                    <div class="q-day-btn" onclick="setEditExpiryFromNow(0)">Set Inactive (0)</div>
+                    <div class="q-day-btn" onclick="setEditExpiryFromNow(1)">Now + 1d</div>
+                    <div class="q-day-btn" onclick="setEditExpiryFromNow(7)">Now + 7d</div>
+                    <div class="q-day-btn" onclick="setEditExpiryFromNow(30)">Now + 30d</div>
+                </div>
+            </div>
+
+            <!-- BOUND DEVICES EDITOR -->
+            <div class="input-group" style="margin-top:8px;">
+                <label>BOUND HWIDs (CLEAR OR REMOVE TO UNBIND)</label>
+                <div id="edit-dev-list" style="display:flex; flex-direction:column; gap:8px;"></div>
+                <button class="btn-primary" style="background:var(--primary-dim); color:var(--secondary); margin-top: 10px; width: 100%; border: 1px dashed var(--primary-border); box-shadow:none; font-size:0.75rem; padding:12px;" onclick="addDeviceInputToEdit()">
+                    <i class="fas fa-plus"></i> BIND HWID MANUALLY
+                </button>
+            </div>
+
+            <div style="display: flex; gap: 12px; margin-top: 22px;">
+                <button class="modal-btn-cancel" onclick="closeModals()">CANCEL</button>
+                <button class="modal-btn-action" onclick="saveEditedKey()">UPDATE KEY</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Ban Modal -->
+    <div class="modal-overlay" id="ban-modal">
+        <div class="modal-card">
+            <div class="modal-handle"></div>
+            <h2 style="color: var(--danger); font-size:1.25rem; font-weight:900; text-align:center; margin-bottom:18px; text-transform:uppercase;">BLACKLIST HARDWARE ID</h2>
+            
+            <div class="input-group">
+                <label>DEVICE HWID TO BLACKLIST</label>
+                <input type="text" id="mod-ban-id" placeholder="e.g. demo_blacklisted_hwid_999" style="font-family: 'JetBrains Mono', monospace; height:46px;">
+            </div>
+            <div class="input-group">
+                <label>BLACKLIST REASON</label>
+                <input type="text" id="mod-ban-reason" placeholder="Banned for attempting unauthorized bypass." style="height:46px;">
+            </div>
+
+            <div style="display: flex; gap: 12px; margin-top: 18px;">
+                <button class="modal-btn-cancel" onclick="closeModals()">CANCEL</button>
+                <button class="modal-btn-action red" onclick="saveBan()">BLACKLIST HWID</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- BOTTOM NAV -->
+    <div class="bottom-nav" id="bottom-nav" style="display: none;">
+        <div class="nav-item active" onclick="nav('keys', this)">
+            <div class="nav-icon-wrap"><i class="fas fa-key"></i></div>
+            <span>KEYS</span>
+        </div>
+        <div class="nav-item" onclick="nav('devices', this)">
+            <div class="nav-icon-wrap"><i class="fas fa-microchip"></i></div>
+            <span>DEVICES</span>
+        </div>
+        <div class="nav-item" onclick="nav('bans', this)">
+            <div class="nav-icon-wrap"><i class="fas fa-skull"></i></div>
+            <span>BANS</span>
+        </div>
+        <div class="nav-item" onclick="nav('config', this)">
+            <div class="nav-icon-wrap"><i class="fas fa-sliders-h"></i></div>
+            <span>SHIELD UI</span>
+        </div>
+    </div>
+
+    <script>
+        function getStorage(key, fallback = null) { try { return localStorage.getItem(key) || fallback; } catch (e) { return fallback; } }
+        function setStorage(key, val) { try { localStorage.setItem(key, val); } catch (e) {} }
+
+        let DB_URL = "";
+        let DB_SECRET = "";
+        let USING_SDK_WS = false;
+        let fbApp = null;
+        let fbDb = null;
+
+        let DB = { config: {}, keys: {} }; 
+        let lastSyncedKeysHash = "";
+        let currentFilter = 'all';
+        let expandedKey = null; 
+        let CURRENT_EDIT_KEY = "";
+        let confirmActionCallback = null;
+        
+        const PAGE_CHUNK = 40;
+        let visibleKeysCount = PAGE_CHUNK;
+        let searchDebounceTimer = null;
+        
+        window.onload = () => {
+            const lastUrl = getStorage('dp_shield_url', '');
+            const lastSecret = getStorage('dp_shield_secret', '');
+            
+            if (lastUrl) document.getElementById('auth-url').value = lastUrl;
+            if (lastSecret) document.getElementById('auth-secret').value = lastSecret;
+
+            renderSavedUrls();
+        };
+
+        /* --- SMART FIREBASE URL NORMALIZER --- */
+        function normalizeFirebaseUrl(rawInput) {
+            if (!rawInput) return "";
+            let s = rawInput.trim().replace(/['"\s]/g, '');
+
+            const consoleMatch = s.match(/\/database\/([a-zA-Z0-9-]+)\/data/i);
+            if (consoleMatch && consoleMatch[1]) {
+                return `https://${consoleMatch[1]}.firebaseio.com`;
+            }
+
+            if (!/^https?:\/\//i.test(s)) {
+                s = 'https://' + s;
+            }
+            s = s.replace(/^http:\/\//i, 'https://');
+
+            try {
+                const u = new URL(s);
+                let host = u.hostname;
+                if (!host.includes('.')) {
+                    host = `${host}.firebaseio.com`;
+                } else if (host.endsWith('.fire') || host.endsWith('.fireb') || host.endsWith('.firebase') || host.endsWith('.firebaseio')) {
+                    host = host.split('.')[0] + '.firebaseio.com';
+                }
+                return `https://${host}`;
+            } catch (e) {
+                return s.replace(/\/+$/, '').replace(/\/\.json$/i, '').replace(/\.json$/i, '');
+            }
+        }
+
+        function buildFirebaseUrl(nodePath = "", includeAuth = true) {
+            const cleanPath = nodePath ? `/${nodePath.replace(/^\/+/, '')}` : '';
+            const hasAuth = includeAuth && DB_SECRET && DB_SECRET.length > 0;
+            const authQuery = hasAuth ? `?auth=${encodeURIComponent(DB_SECRET)}` : '';
+            return `${DB_URL}${cleanPath}.json${authQuery}`;
+        }
+
+        /* --- MULTI-ENGINE FIREBASE CONNECTOR --- */
+        async function fetchRootFromFirebase() {
+            try {
+                const res = await fetch(buildFirebaseUrl("", true), { method: 'GET', cache: 'no-store' });
+                if (res.status === 401 || res.status === 403) {
+                    const pubRes = await fetch(buildFirebaseUrl("", false), { method: 'GET', cache: 'no-store' });
+                    if (pubRes.ok) {
+                        DB_SECRET = "";
+                        USING_SDK_WS = false;
+                        return await pubRes.json();
+                    }
+                    const errJson = await res.json().catch(() => ({}));
+                    throw new Error(errJson.error || "Permission Denied (401): Invalid Database Secret Token");
+                }
+                if (res.ok) {
+                    USING_SDK_WS = false;
+                    return await res.json();
+                }
+            } catch (restErr) {
+                if (restErr.message && restErr.message.includes("Permission Denied")) {
+                    throw restErr;
+                }
+                if (window.firebase && window.firebase.database) {
+                    try {
+                        if (!fbApp) {
+                            fbApp = firebase.initializeApp({ databaseURL: DB_URL }, "dpshield_" + Date.now());
+                            fbDb = firebase.database(fbApp);
+                        }
+                        const snap = await Promise.race([
+                            fbDb.ref('/').once('value'),
+                            new Promise((_, rej) => setTimeout(() => rej(new Error("WebSocket Timeout")), 8000))
+                        ]);
+                        USING_SDK_WS = true;
+                        return snap.val();
+                    } catch (sdkErr) {
+                        throw new Error(`Connection Failed (${restErr.message}). Check your Database URL & Internet.`);
+                    }
+                }
+                throw restErr;
+            }
+            throw new Error("Could not connect to Firebase URL.");
+        }
+
+        /* --- CUSTOM CONFIRMATION MODAL --- */
+        function askConfirm(title, message, onConfirm) {
+            document.getElementById('confirm-modal-title').innerText = title;
+            document.getElementById('confirm-modal-msg').innerText = message;
+            confirmActionCallback = onConfirm;
+            document.getElementById('confirm-modal').classList.add('active');
+        }
+
+        function closeConfirmModal() {
+            document.getElementById('confirm-modal').classList.remove('active');
+            confirmActionCallback = null;
+        }
+
+        document.getElementById('confirm-modal-yes-btn').addEventListener('click', async () => {
+            const cb = confirmActionCallback;
+            closeConfirmModal();
+            if (typeof cb === 'function') await cb();
+        });
+
+        function renderSavedUrls() {
+            let savedConns = [];
+            try { savedConns = JSON.parse(getStorage('dp_shield_conns', '[]')) || []; } catch(e) {}
+            const container = document.getElementById('saved-connections');
+            const list = document.getElementById('saved-url-list');
+            list.innerHTML = "";
+            if (savedConns.length === 0) { container.style.display = 'none'; return; }
+            
+            container.style.display = 'block';
+            savedConns.forEach((conn, index) => {
+                const displayHost = conn.url.replace(/^https?:\/\//, '').replace(/\/+$/, '');
+                list.innerHTML += `
+                    <div class="saved-url-item" onclick="setAndConnectByIndex(${index})">
+                        <div style="flex:1; overflow:hidden;">
+                            <div style="font-size:0.82rem; font-weight:800; color:#fff; text-overflow:ellipsis; overflow:hidden; white-space:nowrap;"><i class="fas fa-database" style="color:var(--primary); margin-right:8px;"></i>${displayHost}</div>
+                        </div>
+                        <div style="background:var(--danger-dim); color:var(--danger); width:30px; height:30px; border-radius:8px; display:flex; justify-content:center; align-items:center;" onclick="removeSavedUrl(${index}, event)"><i class="fas fa-trash" style="font-size:0.75rem;"></i></div>
+                    </div>
+                `;
+            });
+        }
+
+        function setAndConnectByIndex(index) {
+            let savedConns = JSON.parse(getStorage('dp_shield_conns', '[]')) || [];
+            if (savedConns[index]) {
+                document.getElementById('auth-url').value = savedConns[index].url;
+                document.getElementById('auth-secret').value = savedConns[index].secret || "";
+                login();
+            }
+        }
+
+        function removeSavedUrl(index, event) {
+            if (event) event.stopPropagation();
+            let savedConns = JSON.parse(getStorage('dp_shield_conns', '[]')) || [];
+            savedConns.splice(index, 1);
+            setStorage('dp_shield_conns', JSON.stringify(savedConns));
+            renderSavedUrls();
+        }
+
+        function clearAllHistory() {
+            askConfirm("CLEAR HISTORY", "Remove all saved Firebase connections?", () => {
+                setStorage('dp_shield_conns', '[]');
+                renderSavedUrls();
+            });
+        }
+
+        async function login() {
+            const btn = document.getElementById('login-btn');
+            const errBox = document.getElementById('login-error-box');
+            errBox.style.display = 'none';
+
+            let rawUrl = document.getElementById('auth-url').value.trim();
+            const secret = document.getElementById('auth-secret').value.trim();
+
+            if (!rawUrl) {
+                showIsland("Enter Firebase Database URL!", "error");
+                return;
+            }
+
+            DB_URL = normalizeFirebaseUrl(rawUrl);
+            document.getElementById('auth-url').value = DB_URL;
+            DB_SECRET = secret;
+
+            btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> CONNECTING...`;
+
+            try {
+                const data = await fetchRootFromFirebase() || {};
+                DB = {
+                    config: data.config || {},
+                    keys: data.keys || {}
+                };
+                lastSyncedKeysHash = JSON.stringify(DB.keys);
+
+                setStorage('dp_shield_url', DB_URL);
+                setStorage('dp_shield_secret', DB_SECRET);
+
+                let savedConns = JSON.parse(getStorage('dp_shield_conns', '[]')) || [];
+                const existingIndex = savedConns.findIndex(c => c.url === DB_URL);
+                if (existingIndex !== -1) savedConns.splice(existingIndex, 1);
+                savedConns.unshift({ url: DB_URL, secret: DB_SECRET });
+                if (savedConns.length > 5) savedConns.pop(); 
+                setStorage('dp_shield_conns', JSON.stringify(savedConns));
+                
+                document.getElementById('conn-mode-txt').innerText = USING_SDK_WS ? "WS SHIELD" : "CLOUD SHIELD";
+
+                const loginScreen = document.getElementById('login-screen');
+                loginScreen.style.opacity = '0';
+                loginScreen.style.pointerEvents = 'none';
+                
+                setTimeout(() => {
+                    loginScreen.style.display = 'none';
+                    document.getElementById('main-app').style.display = 'flex'; 
+                    document.getElementById('bottom-nav').style.display = 'flex';
+                    
+                    loadConfig(); 
+                    
+                    currentFilter = 'all';
+                    visibleKeysCount = PAGE_CHUNK;
+                    document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+                    document.getElementById('chip-all').classList.add('active'); 
+                    
+                    renderAll();
+                    showIsland("Connected to DPMODS Shield!", "success", "fa-shield-halved");
+                }, 280);
+
+                if (window.syncInterval) clearInterval(window.syncInterval);
+                window.syncInterval = setInterval(silentBackgroundSync, 10000);
+
+            } catch (e) {
+                btn.innerHTML = "CONNECT SHIELD";
+                errBox.style.display = 'block';
+                errBox.innerHTML = `<i class="fas fa-exclamation-circle"></i> <b>Connection Failed:</b> ${e.message}<br><small style="color:var(--text-muted);">Verify that your URL ends with <b>.firebaseio.com</b> or <b>.firebasedatabase.app</b> and your Secret Token is valid.</small>`;
+                showIsland("Connection Failed!", "error");
+            }
+        }
+
+        async function fetchDatabase() {
+            const icon = document.getElementById('reload-icon');
+            icon.classList.add('fa-spin');
+            try {
+                const data = await fetchRootFromFirebase() || {};
+                DB = {
+                    config: data.config || {},
+                    keys: data.keys || {}
+                };
+                lastSyncedKeysHash = JSON.stringify(DB.keys);
+                loadConfig(); 
+                renderAll();
+                showIsland("Database Synced", "success", "fa-sync");
+            } catch (e) {
+                showIsland("Refresh Failed", "error");
+            }
+            setTimeout(() => icon.classList.remove('fa-spin'), 400);
+        }
+
+        async function silentBackgroundSync() {
+            try {
+                if (USING_SDK_WS && fbDb) {
+                    const snap = await fbDb.ref('keys').once('value');
+                    const keysData = snap.val() || {};
+                    const newHash = JSON.stringify(keysData);
+                    if (newHash !== lastSyncedKeysHash) {
+                        DB.keys = keysData;
+                        lastSyncedKeysHash = newHash;
+                        renderAll();
+                    }
+                    return;
+                }
+                const res = await fetch(buildFirebaseUrl("keys"), { cache: 'no-store' });
+                if (res.ok) {
+                    const keysData = await res.json() || {};
+                    const newHash = JSON.stringify(keysData);
+                    if (newHash !== lastSyncedKeysHash) {
+                        DB.keys = keysData;
+                        lastSyncedKeysHash = newHash;
+                        renderAll();
+                    }
+                }
+            } catch (e) {}
+        }
+
+        /* --- BULLETPROOF WRITE / DELETE ENGINE --- */
+        async function syncNode(nodePath, dataObj) {
+            const cleanPath = nodePath.replace(/^\/+/, '');
+            if (USING_SDK_WS && fbDb) {
+                try {
+                    if (dataObj === null) await fbDb.ref(cleanPath).remove();
+                    else await fbDb.ref(cleanPath).set(dataObj);
+                    return true;
+                } catch (e) {}
+            }
+
+            try {
+                const method = dataObj === null ? 'DELETE' : 'PUT';
+                const options = { method };
+                if (dataObj !== null) options.body = JSON.stringify(dataObj);
+                const res = await fetch(buildFirebaseUrl(cleanPath), options);
+                if (res.ok) return true;
+            } catch (e) {}
+
+            try {
+                const overrideMethod = dataObj === null ? 'DELETE' : 'PUT';
+                const baseUrl = buildFirebaseUrl(cleanPath);
+                const sep = baseUrl.includes('?') ? '&' : '?';
+                const res2 = await fetch(`${baseUrl}${sep}x-http-method-override=${overrideMethod}`, {
+                    method: 'POST',
+                    body: dataObj === null ? "" : JSON.stringify(dataObj)
+                });
+                return res2.ok;
+            } catch (e) {
+                showIsland("Sync Error", "error");
+                return false;
+            }
+        }
+
+        async function patchNode(nodePath, patchObj) {
+            const cleanPath = nodePath.replace(/^\/+/, '');
+            if (USING_SDK_WS && fbDb) {
+                try {
+                    await fbDb.ref(cleanPath).update(patchObj);
+                    return true;
+                } catch (e) {}
+            }
+            try {
+                const res = await fetch(buildFirebaseUrl(cleanPath), {
+                    method: 'PATCH',
+                    body: JSON.stringify(patchObj)
+                });
+                if (res.ok) return true;
+            } catch (e) {}
+
+            try {
+                const baseUrl = buildFirebaseUrl(cleanPath);
+                const sep = baseUrl.includes('?') ? '&' : '?';
+                const res2 = await fetch(`${baseUrl}${sep}x-http-method-override=PATCH`, {
+                    method: 'POST',
+                    body: JSON.stringify(patchObj)
+                });
+                return res2.ok;
+            } catch (e) {
+                return false;
+            }
+        }
+
+        function logout() { location.reload(); }
+
+        function nav(viewId, el) {
+            document.querySelectorAll('.view').forEach(v => { v.style.display = 'none'; v.classList.remove('active'); });
+            const nv = document.getElementById('view-' + viewId);
+            nv.style.display = 'block';
+            nv.classList.add('active');
+
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+            if (el) el.classList.add('active');
+
+            if (viewId === 'devices') renderBoundDevicesTab();
+            if (viewId === 'bans') renderBans();
+        }
+
+        function closeModals() {
+            document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('active'));
+        }
+        document.querySelectorAll('.modal-overlay').forEach(overlay => {
+            overlay.addEventListener('click', (e) => { if (e.target === overlay) closeModals(); });
+        });
+
+        function copyToClipboard(text, event) {
+            if (event) event.stopPropagation(); 
+            const el = document.createElement('textarea'); 
+            el.value = text;
+            document.body.appendChild(el); 
+            el.select();
+            try { document.execCommand('copy'); showIsland("Copied: " + text, "success", "fa-copy"); } catch (e) {}
+            document.body.removeChild(el);
+        }
+
+        /* --- TIMESTAMP & REMAINING DAYS ENGINE --- */
+        function parseTimestampMs(ts) {
+            if (!ts || Number(ts) <= 0) return 0;
+            const num = Number(ts);
+            return num < 10000000000 ? num * 1000 : num;
+        }
+
+        function formatRemainingTime(expTimeRaw, durationDays) {
+            const expMs = parseTimestampMs(expTimeRaw);
+            if (!expMs || expMs <= 0) {
+                return {
+                    isActivated: false,
+                    isExpired: false,
+                    shortLabel: `${durationDays || 1}d (Unused)`,
+                    detailedLabel: `Inactive • Starts ${durationDays || 1}d timer on 1st login`,
+                    dateString: "Not Activated Yet (0)"
+                };
+            }
+
+            const nowMs = Date.now();
+            const diffMs = expMs - nowMs;
+            const dateStr = new Date(expMs).toLocaleString([], {
+                day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
+            });
+
+            if (diffMs <= 0) {
+                const pastMs = Math.abs(diffMs);
+                const pastDays = Math.floor(pastMs / 86400000);
+                const pastHours = Math.floor((pastMs % 86400000) / 3600000);
+                const agoStr = pastDays > 0 ? `${pastDays}d ago` : `${pastHours}h ago`;
+                return {
+                    isActivated: true,
+                    isExpired: true,
+                    shortLabel: `Expired (${agoStr})`,
+                    detailedLabel: `Expired ${agoStr}`,
+                    dateString: dateStr
+                };
+            }
+
+            const remDays = Math.floor(diffMs / 86400000);
+            const remHours = Math.floor((diffMs % 86400000) / 3600000);
+            const remMins = Math.floor((diffMs % 3600000) / 60000);
+
+            let shortStr = "";
+            let detailStr = "";
+            if (remDays > 0) {
+                shortStr = `${remDays}d ${remHours}h remaining`;
+                detailStr = `${remDays} Days, ${remHours} Hours remaining`;
+            } else if (remHours > 0) {
+                shortStr = `${remHours}h ${remMins}m remaining`;
+                detailStr = `${remHours} Hours, ${remMins} Mins remaining`;
+            } else {
+                shortStr = `${remMins}m remaining`;
+                detailStr = `${remMins} Minutes remaining`;
+            }
+
+            return {
+                isActivated: true,
+                isExpired: false,
+                shortLabel: shortStr,
+                detailedLabel: detailStr,
+                dateString: dateStr
+            };
+        }
+
+        function getDeviceEntries(data) {
+            if (!data || !data.devices || typeof data.devices !== 'object') return [];
+            return Object.entries(data.devices).filter(([k]) => k !== 'default');
+        }
+
+        function getKeyStatus(data) {
+            const devEntries = getDeviceEntries(data);
+            const timeInfo = formatRemainingTime(data.expiry_time, data.duration_days);
+
+            if (data.is_blocked === true) {
+                return { id: 'blocked', class: 'blocked', text: 'BLOCKED', color: 'var(--danger)', timeInfo };
+            }
+
+            // Also check if any bound HWID is in config.banned_devices
+            if (devEntries.length > 0 && DB.config && DB.config.banned_devices) {
+                const bannedMap = DB.config.banned_devices;
+                if (devEntries.some(([hwid]) => bannedMap[hwid])) {
+                    return { id: 'blocked', class: 'blocked', text: 'HWID BANNED', color: 'var(--danger)', timeInfo };
+                }
+            }
+
+            if (timeInfo.isActivated) {
+                if (timeInfo.isExpired) {
+                    return { id: 'expired', class: 'expired', text: 'EXPIRED', color: 'var(--warning)', timeInfo };
+                }
+                return { id: 'active', class: 'active', text: 'ACTIVE', color: 'var(--success)', timeInfo };
+            }
+
+            if (devEntries.length > 0) {
+                return { id: 'active', class: 'active', text: 'ACTIVE', color: 'var(--success)', timeInfo };
+            }
+
+            return { id: 'inactive', class: 'inactive', text: 'INACTIVE', color: 'var(--cyan)', timeInfo };
+        }
+
+        /* --- LIVE CIRCULAR PREVIEW & THEME SYNC --- */
+        function hexToRgba(hex, alpha) {
+            if (!/^#[0-9A-Fa-f]{6}$/.test(hex)) return `rgba(226, 55, 68, ${alpha})`;
+            const r = parseInt(hex.slice(1, 3), 16);
+            const g = parseInt(hex.slice(3, 5), 16);
+            const b = parseInt(hex.slice(5, 7), 16);
+            return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+        }
+
+        function updateFromPreview(previewId, inputId) {
+            const val = document.getElementById(previewId).innerText;
+            document.getElementById(inputId).value = val.trim();
+            if (inputId === 'ui-brand-title') document.getElementById('hdr-brand-title').innerText = val.trim() || "DPMODS";
+            if (inputId === 'ui-brand-badge') document.getElementById('hdr-brand-badge').innerText = val.trim() || "EDITION";
+        }
+
+        function syncToPreview() {
+            const primary = document.getElementById('thm-primary').value.trim() || "#E23744";
+            const secondary = document.getElementById('thm-secondary').value.trim() || "#FF7E8B";
+            const cardBg = document.getElementById('thm-card-bg').value.trim() || "#12151C";
+            const inputBg = document.getElementById('thm-input-bg').value.trim() || "#191D26";
+
+            if (/^#[0-9A-Fa-f]{6}$/.test(primary)) {
+                document.getElementById('pick-primary').value = primary;
+                document.documentElement.style.setProperty('--primary', primary);
+                document.documentElement.style.setProperty('--primary-dim', hexToRgba(primary, 0.14));
+                document.documentElement.style.setProperty('--primary-border', hexToRgba(primary, 0.4));
+                document.documentElement.style.setProperty('--primary-glow', `0 0 18px ${hexToRgba(primary, 0.45)}`);
+            }
+            if (/^#[0-9A-Fa-f]{6}$/.test(secondary)) {
+                document.getElementById('pick-secondary').value = secondary;
+                document.documentElement.style.setProperty('--secondary', secondary);
+            }
+            if (/^#[0-9A-Fa-f]{6}$/.test(cardBg)) {
+                document.getElementById('pick-card-bg').value = cardBg;
+                document.getElementById('pv-circle-card').style.background = cardBg;
+            }
+            if (/^#[0-9A-Fa-f]{6}$/.test(inputBg)) {
+                document.getElementById('pick-input-bg').value = inputBg;
+                document.getElementById('pv-hwid-box').style.background = inputBg;
+                document.getElementById('pv-key-box').style.background = inputBg;
+            }
+
+            const bTitle = document.getElementById('ui-brand-title').value || "DPMODS";
+            const bBadge = document.getElementById('ui-brand-badge').value || "EDITION";
+            const sPill = document.getElementById('ui-status-pill').value || "● LIVE CLOUD SHIELD";
+            const sub = document.getElementById('ui-subtitle').value || "Background & Foreground Protected";
+            const kHint = document.getElementById('ui-key-hint').value || "Enter or Paste License Key";
+            const vBtn = document.getElementById('ui-verify-btn').value || "UNLOCK APPLICATION";
+            const gTxt = document.getElementById('ui-get-key-text').value || "GET KEY / SUPPORT →";
+
+            document.getElementById('pv-brand-title').innerText = bTitle;
+            document.getElementById('pv-brand-badge').innerText = bBadge;
+            document.getElementById('hdr-brand-title').innerText = bTitle;
+            document.getElementById('hdr-brand-badge').innerText = bBadge;
+            document.getElementById('pv-status-pill').innerText = sPill;
+            document.getElementById('pv-subtitle').innerText = sub;
+            document.getElementById('pv-key-hint').innerText = kHint;
+            document.getElementById('pv-verify-btn').innerText = vBtn;
+            document.getElementById('pv-get-key-text').innerText = gTxt;
+        }
+
+        function loadConfig() {
+            const cfg = DB.config || {};
+            const dui = cfg.dialog_ui || {};
+            const thm = cfg.ui_theme || {};
+            const mnt = cfg.maintenance || {};
+            const upd = cfg.update || {};
+
+            document.getElementById('thm-primary').value = thm.primary_color || "#E23744";
+            document.getElementById('thm-secondary').value = thm.secondary_color || "#FF7E8B";
+            document.getElementById('thm-card-bg').value = thm.card_bg_color || "#12151C";
+            document.getElementById('thm-input-bg').value = thm.input_bg_color || "#191D26";
+
+            document.getElementById('ui-brand-title').value = dui.brand_title || "DPMODS";
+            document.getElementById('ui-brand-badge').value = dui.brand_badge || "EDITION";
+            document.getElementById('ui-status-pill').value = dui.status_pill || "● LIVE CLOUD SHIELD";
+            document.getElementById('ui-subtitle').value = dui.subtitle || "Background & Foreground Protected";
+            document.getElementById('ui-key-hint').value = dui.key_hint || "Enter or Paste License Key";
+            document.getElementById('ui-verify-btn').value = dui.verify_btn_text || "UNLOCK APPLICATION";
+            document.getElementById('ui-get-key-text').value = dui.get_key_text || "GET KEY / SUPPORT →";
+            document.getElementById('ui-get-key-url').value = dui.get_key_url || "https://t.me/dpmods";
+
+            document.getElementById('cfg-show-dialog').checked = cfg.show_dialog !== false;
+            document.getElementById('cfg-kill-bg').checked = cfg.kill_in_background !== false;
+            document.getElementById('cfg-check-sec').value = cfg.check_interval_sec !== undefined ? cfg.check_interval_sec : 5;
+            document.getElementById('cfg-bg-check-sec').value = cfg.bg_check_interval_sec !== undefined ? cfg.bg_check_interval_sec : 10;
+            document.getElementById('cfg-ban-msg').value = cfg.default_ban_message || "Your device HWID has been permanently blacklisted for security violations.";
+
+            document.getElementById('mnt-status').checked = mnt.status === true;
+            document.getElementById('mnt-title').value = mnt.title || "SERVER MAINTENANCE";
+            document.getElementById('mnt-msg').value = mnt.message || "We are upgrading our cloud security nodes. Service will resume shortly.";
+
+            document.getElementById('upd-status').checked = upd.status === true;
+            document.getElementById('upd-title').value = upd.title || "CRITICAL UPDATE";
+            document.getElementById('upd-btn').value = upd.btn_text || "DOWNLOAD UPDATE";
+            document.getElementById('upd-url').value = upd.url || "https://t.me/dpmods";
+            document.getElementById('upd-msg').value = upd.message || "A mandatory new update has been released. Download now to continue.";
+
+            syncToPreview();
+        }
+
+        async function saveConfig() {
+            const newConfig = {
+                banned_devices: (DB.config && DB.config.banned_devices) ? DB.config.banned_devices : {},
+                bg_check_interval_sec: parseInt(document.getElementById('cfg-bg-check-sec').value) || 10,
+                check_interval_sec: parseInt(document.getElementById('cfg-check-sec').value) || 5,
+                default_ban_message: document.getElementById('cfg-ban-msg').value.trim(),
+                dialog_ui: {
+                    brand_badge: document.getElementById('ui-brand-badge').value.trim(),
+                    brand_title: document.getElementById('ui-brand-title').value.trim(),
+                    get_key_text: document.getElementById('ui-get-key-text').value.trim(),
+                    get_key_url: document.getElementById('ui-get-key-url').value.trim(),
+                    key_hint: document.getElementById('ui-key-hint').value.trim(),
+                    status_pill: document.getElementById('ui-status-pill').value.trim(),
+                    subtitle: document.getElementById('ui-subtitle').value.trim(),
+                    verify_btn_text: document.getElementById('ui-verify-btn').value.trim()
+                },
+                kill_in_background: document.getElementById('cfg-kill-bg').checked,
+                maintenance: {
+                    message: document.getElementById('mnt-msg').value.trim(),
+                    status: document.getElementById('mnt-status').checked,
+                    title: document.getElementById('mnt-title').value.trim()
+                },
+                show_dialog: document.getElementById('cfg-show-dialog').checked,
+                ui_theme: {
+                    card_bg_color: document.getElementById('thm-card-bg').value.trim().toUpperCase(),
+                    input_bg_color: document.getElementById('thm-input-bg').value.trim().toUpperCase(),
+                    primary_color: document.getElementById('thm-primary').value.trim().toUpperCase(),
+                    secondary_color: document.getElementById('thm-secondary').value.trim().toUpperCase()
+                },
+                update: {
+                    btn_text: document.getElementById('upd-btn').value.trim(),
+                    message: document.getElementById('upd-msg').value.trim(),
+                    status: document.getElementById('upd-status').checked,
+                    title: document.getElementById('upd-title').value.trim(),
+                    url: document.getElementById('upd-url').value.trim()
+                }
+            };
+
+            DB.config = newConfig;
+            await syncNode('config', newConfig);
+            showIsland("Shield Config Saved!", "success", "fa-check");
+        }
+
+        /* --- KEYS CRUD LOGIC --- */
+        function setFilterByStat(fType) {
+            const chip = document.getElementById('chip-' + fType);
+            if (chip) setFilter(fType, chip);
+        }
+
+        function handleSearch() {
+            clearTimeout(searchDebounceTimer);
+            searchDebounceTimer = setTimeout(() => {
+                visibleKeysCount = PAGE_CHUNK; 
+                renderKeys();
+            }, 180);
+        }
+
+        function setFilter(val, el) {
+            currentFilter = val;
+            visibleKeysCount = PAGE_CHUNK; 
+            el.parentElement.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+            el.classList.add('active');
+            renderKeys(); 
+        }
+
+        function generateRandomKey() {
+            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+            let res = '';
+            for(let i=0; i<6; i++) res += chars.charAt(Math.floor(Math.random() * chars.length));
+            return `DPMODS-VIP-${res}`;
+        }
+
+        function openKeyModal() {
+            document.getElementById('mod-key-id').value = generateRandomKey();
+            document.getElementById('mod-key-days').value = 30;
+            document.getElementById('mod-key-limit').value = 1;
+            document.getElementById('mod-start-now').checked = false;
+            
+            document.getElementById('chk-bulk').checked = false;
+            document.getElementById('bulk-qty-row').style.display = 'none';
+            document.getElementById('single-key-row').style.display = 'block';
+            document.getElementById('key-modal').classList.add('active');
+        }
+
+        function randomKey() { 
+            document.getElementById('mod-key-id').value = generateRandomKey(); 
+        }
+
+        async function saveKey() {
+            const isBulk = document.getElementById('chk-bulk').checked;
+            const days = parseInt(document.getElementById('mod-key-days').value) || 30;
+            const limit = parseInt(document.getElementById('mod-key-limit').value) || 1;
+            const startNow = document.getElementById('mod-start-now').checked;
+
+            const initialExp = startNow ? Math.floor(Date.now() / 1000) + (days * 86400) : 0;
+
+            if (!DB.keys || typeof DB.keys !== 'object') DB.keys = {};
+
+            let newKeysObj = {};
+            if (isBulk) {
+                const qty = parseInt(document.getElementById('mod-bulk-qty').value) || 10;
+                for (let i = 0; i < qty; i++) {
+                    let newId;
+                    do { 
+                        newId = generateRandomKey(); 
+                    } while (DB.keys[newId] || newKeysObj[newId]); 
+                    
+                    newKeysObj[newId] = {
+                        duration_days: days,
+                        expiry_time: initialExp,
+                        is_blocked: false,
+                        max_devices: limit
+                    };
+                    DB.keys[newId] = newKeysObj[newId];
+                }
+            } else {
+                const keyId = document.getElementById('mod-key-id').value.trim().replace(/[.#$\[\]\/]/g, '-');
+                if (!keyId) return showIsland("Enter Key ID!", "error");
+                if (DB.keys[keyId]) return showIsland("Key already exists!", "error");
+                
+                newKeysObj[keyId] = {
+                    duration_days: days,
+                    expiry_time: initialExp,
+                    is_blocked: false,
+                    max_devices: limit
+                };
+                DB.keys[keyId] = newKeysObj[keyId];
+            }
+
+            await patchNode("keys", newKeysObj);
+            lastSyncedKeysHash = JSON.stringify(DB.keys);
+            showIsland("Key(s) Generated!", "success", "fa-key");
+            
+            closeModals(); 
+            renderAll();
+        }
+
+        function setEditExpiryFromNow(days) {
+            const inp = document.getElementById('edit-key-exp-time');
+            if (days <= 0) {
+                inp.value = 0;
+            } else {
+                inp.value = Math.floor(Date.now() / 1000) + (days * 86400);
+            }
+            updateEditExpiryPreview();
+        }
+
+        function updateEditExpiryPreview() {
+            const expVal = Number(document.getElementById('edit-key-exp-time').value) || 0;
+            const daysVal = Number(document.getElementById('edit-key-days').value) || 1;
+            const info = formatRemainingTime(expVal, daysVal);
+            const el = document.getElementById('edit-exp-human');
+            el.innerText = `${info.detailedLabel} • (${info.dateString})`;
+            el.style.color = info.isExpired ? 'var(--warning)' : (info.isActivated ? 'var(--success)' : 'var(--cyan)');
+        }
+
+        function addDeviceInputToEdit(hwid = "") {
+            const devList = document.getElementById('edit-dev-list');
+            const noMsg = document.getElementById('no-dev-msg');
+            if (noMsg) noMsg.remove();
+
+            const row = document.createElement('div');
+            row.className = "edit-dev-row";
+            row.style.cssText = "display:flex; gap:8px; align-items:center;";
+            row.innerHTML = `
+                <input type="text" class="edit-dev-id" value="${hwid}" placeholder="Enter Device HWID (e.g. 87d7ea7faf897f9f)" style="height:42px; font-family:'JetBrains Mono', monospace; flex:1; background:var(--bg-input); border:1px solid var(--border-light); border-radius:10px; padding:0 12px; color:var(--cyan); font-size:0.82rem; outline:none;">
+                <button class="sq-btn" style="background:var(--danger-dim); color:var(--danger); border:none; width:42px; height:42px;" onclick="this.parentElement.remove()"><i class="fas fa-times"></i></button>
+            `;
+            devList.appendChild(row);
+        }
+
+        function openEditKeyModal(keyId, event) {
+            if(event) event.stopPropagation();
+            CURRENT_EDIT_KEY = keyId;
+            const data = DB.keys[keyId] || {};
+            document.getElementById('edit-key-id').value = keyId;
+            document.getElementById('edit-key-blocked').checked = data.is_blocked === true;
+            document.getElementById('edit-key-days').value = data.duration_days || 1;
+            document.getElementById('edit-key-limit').value = data.max_devices || 1;
+            document.getElementById('edit-key-exp-time').value = data.expiry_time || 0;
+
+            updateEditExpiryPreview();
+
+            const devList = document.getElementById('edit-dev-list');
+            devList.innerHTML = '';
+            
+            const devEntries = getDeviceEntries(data);
+            if (devEntries.length > 0) {
+                devEntries.forEach(([hwid]) => {
+                    addDeviceInputToEdit(hwid);
+                });
+            } else {
+                devList.innerHTML = `<div id="no-dev-msg" style="text-align:center; color:var(--text-muted); font-size:0.72rem; padding:10px; border:1px dashed var(--border-light); border-radius:10px;">No devices bound.</div>`;
+            }
+
+            document.getElementById('edit-key-modal').classList.add('active');
+        }
+
+        async function saveEditedKey() {
+            const keyId = CURRENT_EDIT_KEY || document.getElementById('edit-key-id').value;
+            const isBlocked = document.getElementById('edit-key-blocked').checked;
+            const days = parseInt(document.getElementById('edit-key-days').value) || 1;
+            const limit = parseInt(document.getElementById('edit-key-limit').value) || 1;
+            const expTime = parseInt(document.getElementById('edit-key-exp-time').value) || 0;
+
+            const devRows = document.querySelectorAll('.edit-dev-row');
+            let newDevices = {};
+            let hasDevs = false;
+
+            devRows.forEach(r => {
+                const idVal = r.querySelector('.edit-dev-id').value.trim();
+                if (idVal) {
+                    newDevices[idVal] = true;
+                    hasDevs = true;
+                }
+            });
+
+            const updatedKeyObj = {
+                duration_days: days,
+                expiry_time: expTime,
+                is_blocked: isBlocked,
+                max_devices: limit
+            };
+            if (hasDevs) updatedKeyObj.devices = newDevices;
+
+            DB.keys[keyId] = updatedKeyObj;
+            await syncNode(`keys/${encodeURIComponent(keyId)}`, updatedKeyObj);
+            lastSyncedKeysHash = JSON.stringify(DB.keys);
+
+            closeModals(); 
+            renderAll();
+            showIsland("Key Updated!", "success", "fa-pen");
+        }
+
+        /* --- GUARANTEED KEY DELETE & RESET/UNBIND --- */
+        function deleteKey(keyId, event) {
+            if (event) event.stopPropagation();
+            askConfirm("DELETE KEY", `Permanently delete key "${keyId}" from database?`, async () => {
+                if (DB.keys && keyId in DB.keys) {
+                    delete DB.keys[keyId];
+                }
+                if (expandedKey === keyId) expandedKey = null;
+
+                const ok = await syncNode(`keys/${encodeURIComponent(keyId)}`, null);
+                if (!ok) {
+                    await patchNode("keys", { [keyId]: null });
+                }
+
+                lastSyncedKeysHash = JSON.stringify(DB.keys);
+                renderAll();
+                showIsland("Key Deleted!", "success", "fa-trash");
+            });
+        }
+
+        function resetAndUnbindKey(keyId, event) {
+            if (event) event.stopPropagation();
+            askConfirm("RESET & UNBIND KEY", `Unbind all devices and reset expiry_time to 0 (Inactive) for "${keyId}"?`, async () => {
+                if (DB.keys && DB.keys[keyId]) {
+                    delete DB.keys[keyId].devices;
+                    DB.keys[keyId].expiry_time = 0;
+                    await syncNode(`keys/${encodeURIComponent(keyId)}`, DB.keys[keyId]);
+                }
+                lastSyncedKeysHash = JSON.stringify(DB.keys);
+                renderAll();
+                showIsland("Key Reset to Fresh/Inactive!", "success", "fa-undo");
+            });
+        }
+
+        function toggleAccordion(keyId) {
+            expandedKey = (expandedKey === keyId) ? null : keyId;
+            renderKeys(); 
+        }
+
+        /* --- BULK ACTIONS --- */
+        function bulkDeleteInactive() {
+            const inactKeys = Object.entries(DB.keys || {}).filter(([k, v]) => getKeyStatus(v).id === 'inactive');
+            if (inactKeys.length === 0) return showIsland("No inactive/unused keys found", "error");
+
+            askConfirm("DELETE INACTIVE KEYS", `Delete all ${inactKeys.length} INACTIVE (unused) keys permanently?`, async () => {
+                const updates = {};
+                inactKeys.forEach(([k]) => {
+                    updates[k] = null;
+                    delete DB.keys[k];
+                });
+                await patchNode("keys", updates);
+                lastSyncedKeysHash = JSON.stringify(DB.keys);
+                renderAll();
+                showIsland(`Deleted ${inactKeys.length} inactive keys`, "success");
+            });
+        }
+
+        function bulkDeleteExpired() {
+            const expKeys = Object.entries(DB.keys || {}).filter(([k, v]) => getKeyStatus(v).id === 'expired');
+            if (expKeys.length === 0) return showIsland("No expired keys found", "error");
+
+            askConfirm("DELETE EXPIRED KEYS", `Delete all ${expKeys.length} EXPIRED keys permanently?`, async () => {
+                const updates = {};
+                expKeys.forEach(([k]) => {
+                    updates[k] = null;
+                    delete DB.keys[k];
+                });
+                await patchNode("keys", updates);
+                lastSyncedKeysHash = JSON.stringify(DB.keys);
+                renderAll();
+                showIsland(`Deleted ${expKeys.length} expired keys`, "success");
+            });
+        }
+
+        function bulkUnbindAll() {
+            let boundCount = 0;
+            Object.values(DB.keys || {}).forEach(v => {
+                if (getDeviceEntries(v).length > 0 || (v.expiry_time && v.expiry_time > 0)) boundCount++;
+            });
+            if (boundCount === 0) return showIsland("No active/bound keys found", "error");
+
+            askConfirm("RESET & UNBIND ALL", `Unbind devices and reset timers on all ${boundCount} active keys?`, async () => {
+                for (let k in DB.keys) {
+                    delete DB.keys[k].devices;
+                    DB.keys[k].expiry_time = 0;
+                }
+                await syncNode("keys", DB.keys);
+                lastSyncedKeysHash = JSON.stringify(DB.keys);
+                renderAll();
+                showIsland(`Reset & unbound ${boundCount} keys`, "success");
+            });
+        }
+
+        function renderAll() {
+            renderStats();
+            renderKeys();
+            renderBans();
+            if (document.getElementById('view-devices').classList.contains('active')) {
+                renderBoundDevicesTab();
+            }
+        }
+
+        function renderStats() {
+            let total = 0, active = 0, inactive = 0, expired = 0;
+            Object.values(DB.keys || {}).forEach(k => {
+                if (!k || typeof k !== 'object') return;
+                total++;
+                const st = getKeyStatus(k).id;
+                if (st === 'active') active++;
+                else if (st === 'inactive') inactive++;
+                else if (st === 'expired') expired++;
+            });
+            document.getElementById('stat-total').innerText = total;
+            document.getElementById('stat-active').innerText = active;
+            document.getElementById('stat-inactive').innerText = inactive;
+            document.getElementById('stat-expired').innerText = expired;
+        }
+
+        /* --- SAFE EVENT DELEGATION FOR KEYS LIST --- */
+        document.getElementById('keys-list').addEventListener('click', (e) => {
+            const btnCopyKey = e.target.closest('[data-action="copy-key"]');
+            if (btnCopyKey) {
+                copyToClipboard(decodeURIComponent(btnCopyKey.dataset.key), e);
+                return;
+            }
+            const btnCopyHwid = e.target.closest('[data-action="copy-hwid"]');
+            if (btnCopyHwid) {
+                copyToClipboard(decodeURIComponent(btnCopyHwid.dataset.hwid), e);
+                return;
+            }
+            const btnUnbind = e.target.closest('[data-action="unbind-key"]');
+            if (btnUnbind) {
+                resetAndUnbindKey(decodeURIComponent(btnUnbind.dataset.key), e);
+                return;
+            }
+            const btnEdit = e.target.closest('[data-action="edit-key"]');
+            if (btnEdit) {
+                openEditKeyModal(decodeURIComponent(btnEdit.dataset.key), e);
+                return;
+            }
+            const btnDelete = e.target.closest('[data-action="delete-key"]');
+            if (btnDelete) {
+                deleteKey(decodeURIComponent(btnDelete.dataset.key), e);
+                return;
+            }
+            const headerEl = e.target.closest('[data-action="toggle-acc"]');
+            if (headerEl) {
+                toggleAccordion(decodeURIComponent(headerEl.dataset.key));
+            }
+        });
+
+        function renderKeys() {
+            const list = document.getElementById('keys-list');
+            const loadMoreBox = document.getElementById('keys-load-more-box');
+            const search = document.getElementById('search-keys').value.toLowerCase().trim();
+            
+            const rawKeys = Object.entries(DB.keys || {}).reverse();
+            
+            const filtered = [];
+            for (let i = 0; i < rawKeys.length; i++) {
+                const [keyId, data] = rawKeys[i];
+                if (!data || typeof data !== 'object') continue;
+                
+                const statusObj = getKeyStatus(data);
+                if (currentFilter !== 'all' && currentFilter !== statusObj.id) continue;
+
+                const devEntries = getDeviceEntries(data);
+                if (search) {
+                    let match = keyId.toLowerCase().includes(search);
+                    if (!match && String(data.duration_days).includes(search)) match = true;
+                    if (!match && statusObj.timeInfo.shortLabel.toLowerCase().includes(search)) match = true;
+                    if (!match && devEntries.length > 0) {
+                        match = devEntries.some(([hwid]) => hwid.toLowerCase().includes(search));
+                    }
+                    if (!match) continue;
+                }
+                
+                filtered.push({ keyId, data, statusObj, devEntries });
+            }
+
+            if (filtered.length === 0) {
+                list.innerHTML = `<div class="empty-state">NO KEYS FOUND</div>`;
+                loadMoreBox.innerHTML = '';
+                return;
+            }
+
+            const sliceToRender = filtered.slice(0, visibleKeysCount);
+            let htmlBuffer = "";
+
+            for (let i = 0; i < sliceToRender.length; i++) {
+                const { keyId, data, statusObj, devEntries } = sliceToRender[i];
+                const isExpanded = expandedKey === keyId;
+                const devCount = devEntries.length;
+                const encKey = encodeURIComponent(keyId);
+                const tInfo = statusObj.timeInfo;
+                
+                // Show bound HWID chip directly on card header so user can see Device ID immediately
+                let firstHwidChip = "";
+                if (devCount > 0) {
+                    const firstHwid = devEntries[0][0];
+                    const extraCnt = devCount > 1 ? ` +${devCount - 1}` : '';
+                    firstHwidChip = `<span class="meta-hwid-pill" data-action="copy-hwid" data-hwid="${encodeURIComponent(firstHwid)}" title="Tap to copy HWID"><i class="fas fa-microchip" style="margin-right:3px;"></i>${firstHwid}${extraCnt}</span>`;
+                } else {
+                    firstHwidChip = `<span style="color:var(--text-muted); font-size:0.58rem;">No Device (${devCount}/${data.max_devices || 1})</span>`;
+                }
+
+                let devListHtml = "";
+                if (devCount > 0) {
+                    devListHtml = `<div class="dev-list">
+                        <div class="dev-list-header">
+                            <span>BOUND HARDWARE IDs (${devCount}/${data.max_devices || 1})</span>
+                            <span>TAP TO COPY</span>
+                        </div>`;
+                    devEntries.forEach(([hwid]) => {
+                        const encHwid = encodeURIComponent(hwid);
+                        devListHtml += `
+                            <div class="dev-item">
+                                <span class="dev-hwid" data-action="copy-hwid" data-hwid="${encHwid}">
+                                    <i class="fas fa-microchip" style="color:var(--text-muted); margin-right:6px; font-size:0.7rem;"></i>${hwid}
+                                </span>
+                                <i class="fas fa-copy" style="color:var(--text-muted); font-size:0.72rem; cursor:pointer;" data-action="copy-hwid" data-hwid="${encHwid}"></i>
+                            </div>
+                        `;
+                    });
+                    devListHtml += `</div>`;
+                } else {
+                    devListHtml = `<div style="text-align:center; color:var(--text-muted); font-size:0.72rem; padding:10px; border:1px dashed var(--border-light); border-radius:10px;">No devices bound (0/${data.max_devices || 1})</div>`;
+                }
+
+                htmlBuffer += `
+                    <div class="acc-card ${isExpanded ? 'expanded' : ''}">
+                        <div class="acc-header" data-action="toggle-acc" data-key="${encKey}">
+                            <div class="acc-header-left">
+                                <i class="fas fa-chevron-down acc-chevron"></i>
+                                <i class="fas fa-key key-icon"></i>
+                                <div class="key-title-wrapper">
+                                    <div class="key-title">${keyId}</div>
+                                    <div class="key-meta-line">
+                                        <span class="meta-time-pill" style="color:${statusObj.color};"><i class="far fa-clock" style="margin-right:3px;"></i>${tInfo.shortLabel}</span>
+                                        ${firstHwidChip}
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="acc-header-right">
+                                <span class="copy-badge" data-action="copy-key" data-key="${encKey}">COPY</span>
+                                <div class="status-badge ${statusObj.class}">
+                                    <div class="badge-dot" style="background:${statusObj.color}"></div>
+                                    ${statusObj.text}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="acc-body" style="max-height: ${isExpanded ? '540px' : '0'};">
+                            <div class="acc-content">
+                                <div class="info-grid">
+                                    <div class="info-box"><span class="info-lbl">Time Remaining</span><span class="info-val" style="color:${statusObj.color}">${tInfo.detailedLabel}</span></div>
+                                    <div class="info-box"><span class="info-lbl">Devices Bound</span><span class="info-val">${devCount} / ${data.max_devices || 1}</span></div>
+                                    <div class="info-box"><span class="info-lbl">Plan Duration</span><span class="info-val">${data.duration_days || 1} Days (${data.duration_days || 1}d)</span></div>
+                                    <div class="info-box"><span class="info-lbl">Exact Expiry</span><span class="info-val">${tInfo.dateString}</span></div>
+                                </div>
+                                ${devListHtml}
+                                <div class="action-row">
+                                    <button class="action-btn btn-unbind-single" data-action="unbind-key" data-key="${encKey}"><i class="fas fa-undo"></i> Reset</button>
+                                    <button class="action-btn btn-edit" data-action="edit-key" data-key="${encKey}"><i class="fas fa-pen"></i> Edit</button>
+                                    <button class="action-btn btn-delete" data-action="delete-key" data-key="${encKey}"><i class="fas fa-trash"></i> Delete</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            list.innerHTML = htmlBuffer;
+
+            if (filtered.length > visibleKeysCount) {
+                const remaining = filtered.length - visibleKeysCount;
+                loadMoreBox.innerHTML = `
+                    <button class="load-more-btn" onclick="loadMoreKeys()">
+                        LOAD MORE (+${remaining > PAGE_CHUNK ? PAGE_CHUNK : remaining} KEYS)
+                    </button>
+                `;
+            } else {
+                loadMoreBox.innerHTML = '';
+            }
+        }
+
+        function loadMoreKeys() {
+            visibleKeysCount += PAGE_CHUNK;
+            renderKeys();
+        }
+
+        /* --- BOUND DEVICES INSPECTOR TAB --- */
+        function renderBoundDevicesTab() {
+            const list = document.getElementById('bound-devs-list');
+            const search = document.getElementById('search-devs').value.toLowerCase().trim();
+            const rawKeys = Object.entries(DB.keys || {});
+            
+            let html = "";
+            let count = 0;
+
+            rawKeys.forEach(([keyId, data]) => {
+                const devEntries = getDeviceEntries(data);
+                const st = getKeyStatus(data);
+                devEntries.forEach(([hwid]) => {
+                    if (search && !hwid.toLowerCase().includes(search) && !keyId.toLowerCase().includes(search)) {
+                        return;
+                    }
+                    count++;
+                    const encKey = encodeURIComponent(keyId);
+                    const encHwid = encodeURIComponent(hwid);
+                    html += `
+                        <div class="ios-card" style="padding:14px 16px; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center;">
+                            <div style="min-width:0; flex:1;">
+                                <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px; flex-wrap:wrap;">
+                                    <span style="font-family:'JetBrains Mono', monospace; font-weight:800; color:var(--cyan); font-size:0.9rem; cursor:pointer; word-break:break-all;" onclick="copyToClipboard(decodeURIComponent('${encHwid}'), event)">
+                                        <i class="fas fa-microchip" style="margin-right:6px; font-size:0.75rem;"></i>${hwid}
+                                    </span>
+                                    <span class="meta-time-pill" style="color:${st.color}; font-size:0.6rem;">${st.timeInfo.shortLabel}</span>
+                                </div>
+                                <div style="font-size:0.7rem; color:var(--text-muted); font-weight:700;">
+                                    Key: <span style="color:#fff; font-family:'JetBrains Mono', monospace;">${keyId}</span>
+                                </div>
+                            </div>
+                            <button class="sq-btn" style="background:var(--danger-dim); color:var(--danger); border:none; width:38px; height:38px;" onclick="removeSingleBoundDevice('${encKey}', '${encHwid}')" title="Unbind Device">
+                                <i class="fas fa-unlink"></i>
+                            </button>
+                        </div>
+                    `;
+                });
+            });
+
+            list.innerHTML = count > 0 ? html : `<div class="empty-state">NO BOUND DEVICES FOUND</div>`;
+        }
+
+        function removeSingleBoundDevice(encKey, encHwid) {
+            const keyId = decodeURIComponent(encKey);
+            const hwid = decodeURIComponent(encHwid);
+            askConfirm("UNBIND DEVICE", `Remove device "${hwid}" from key "${keyId}"?`, async () => {
+                if (DB.keys[keyId] && DB.keys[keyId].devices) {
+                    delete DB.keys[keyId].devices[hwid];
+                }
+                await syncNode(`keys/${encodeURIComponent(keyId)}/devices/${encodeURIComponent(hwid)}`, null);
+                lastSyncedKeysHash = JSON.stringify(DB.keys);
+                renderAll();
+                showIsland("Device Unbound", "success", "fa-unlink");
+            });
+        }
+
+        /* --- BANNED DEVICES LOGIC (config/banned_devices) --- */
+        function openBanModal() {
+            document.getElementById('mod-ban-id').value = '';
+            document.getElementById('mod-ban-reason').value = '';
+            document.getElementById('ban-modal').classList.add('active');
+        }
+        
+        async function saveBan() {
+            const hwid = document.getElementById('mod-ban-id').value.trim();
+            const reason = document.getElementById('mod-ban-reason').value.trim() || (DB.config && DB.config.default_ban_message) || "Banned for attempting unauthorized bypass.";
+            if (!hwid) return showIsland("Enter HWID!", "error");
+            if (!DB.config) DB.config = {};
+            if (!DB.config.banned_devices) DB.config.banned_devices = {};
+            DB.config.banned_devices[hwid] = reason; 
+            await syncNode(`config/banned_devices/${encodeURIComponent(hwid)}`, reason);
+            closeModals(); renderAll(); showIsland("HWID Blacklisted", "success", "fa-skull");
+        }
+
+        function unbanHWID(encodedHwid) {
+            const hwid = decodeURIComponent(encodedHwid);
+            askConfirm("REMOVE BLACKLIST", `Unban hardware ID "${hwid}"?`, async () => {
+                if (DB.config && DB.config.banned_devices) delete DB.config.banned_devices[hwid]; 
+                const ok = await syncNode(`config/banned_devices/${encodeURIComponent(hwid)}`, null);
+                if (!ok) await patchNode("config/banned_devices", { [hwid]: null });
+                renderAll();
+                showIsland("HWID Unbanned", "success");
+            });
+        }
+
+        function renderBans() {
+            const list = document.getElementById('bans-list');
+            const search = document.getElementById('search-bans').value.toLowerCase().trim();
+            const banObj = (DB.config && DB.config.banned_devices) ? DB.config.banned_devices : {};
+            const entries = Object.entries(banObj);
+            
+            let html = "";
+            for (let i = 0; i < entries.length; i++) {
+                const [hwid, reason] = entries[i];
+                if (search && !hwid.toLowerCase().includes(search) && !String(reason).toLowerCase().includes(search)) continue;
+                const enc = encodeURIComponent(hwid);
+
+                html += `
+                    <div class="ios-card" style="padding:16px; margin-bottom:10px;">
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <div style="font-family:'JetBrains Mono', monospace; font-weight:800; color:var(--danger); font-size:0.9rem; cursor:pointer; word-break:break-all;" onclick="copyToClipboard(decodeURIComponent('${enc}'), event)">
+                                <i class="fas fa-skull" style="margin-right:8px;"></i>${hwid}
+                            </div>
+                            <button class="sq-btn" style="background:var(--danger-dim); color:var(--danger); border:none; width:38px; height:38px;" onclick="unbanHWID('${enc}')"><i class="fas fa-trash"></i></button>
+                        </div>
+                        <div style="font-size:0.75rem; color:var(--text-muted); margin-top:8px; background:rgba(0,0,0,0.35); padding:8px 12px; border-radius:8px; font-weight:600;">
+                            ${reason}
+                        </div>
+                    </div>`;
+            }
+            list.innerHTML = html || `<div class="empty-state">No Blacklisted Devices</div>`;
+        }
+
+        let islandTimeout;
+        function showIsland(msg, type = "success", customIcon = null) {
+            const island = document.getElementById('dynamic-island');
+            island.innerHTML = `<i class="fas ${customIcon || (type === 'success' ? 'fa-check-circle' : 'fa-exclamation-triangle')}"></i> ${msg}`;
+            island.style.color = type === "success" ? "var(--secondary)" : "var(--danger)";
+            island.classList.add('show');
+            clearTimeout(islandTimeout);
+            islandTimeout = setTimeout(() => { island.classList.remove('show'); }, 2600); 
+        }
+    </script>
+</body>
+</html>
